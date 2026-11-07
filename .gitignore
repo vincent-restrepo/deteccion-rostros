@@ -1,0 +1,19 @@
+# Datasets, modelos pesados y entornos: no van al repo
+entradas/
+modelos/
+.venv/
+__pycache__/
+.DS_Store
+# Datos derivados (se regeneran con src/); sí se versionan informes, CSV y el manifiesto
+datos/*/train/
+datos/*/val/
+datos/*/test/
+datos/*/*/*.jpg
+datos/*/*/*.png
+# Privacidad: fotos y videos de Vincent, nunca al repo
+propios/
+datos-propios/
+*.heic
+*.mov
+*.mp4
+salidas_demo/
