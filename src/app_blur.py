@@ -14,13 +14,14 @@ from detector_caras import Detector
 VENTANA, MIN_VOTOS = 9, 5   # votación: la cara se confirma si aparece en >=5 de los últimos 9 cuadros
 RETENER = 20                # cuadros que se sigue difuminando una cara confirmada tras perderla
 MARGEN = 0.25               # se agranda la caja un 25 % para cubrir frente y mentón
-ANCHO_DET = 480             # se detecta en una imagen reducida a este ancho (más rápido)
+ANCHO_DET = 1280            # se detecta reduciendo a este ancho como máximo; a 480 se perdían las caras del fondo (E8)
 
 ESTADO = {"esconder": True, "caras": True, "documentos": False, "cajas": False, "modo": "desenfoque", "bloque": 16,
-          "n_caras": 0, "fps": 0.0, "fuente": "", "error": ""}
+          "n_caras": 0, "fps": 0.0, "det_ms": 0, "fuente": "", "error": ""}
 LOCK = threading.Lock()
 ULTIMO_JPG = None
 ULTIMO_FRAME = None
+ULTIMO_CRUDO = None; N_CRUDO = 0; CAJAS = []; DETS = []
 
 
 class Pista:
@@ -83,15 +84,31 @@ def aplicar(img, cajas, modo, bloque=16):
         img[y0:y1, x0:x1] = r2
 
 
+def hilo_deteccion():
+    """Detecta en segundo plano con el último cuadro; el video sigue fluido y usa las últimas cajas confirmadas."""
+    global CAJAS, DETS
+    detector = Detector(); seg = Seguimiento(); vistos = -1
+    while True:
+        with LOCK: frame, num = ULTIMO_CRUDO, N_CRUDO
+        if frame is None or num == vistos: time.sleep(0.01); continue
+        vistos = num
+        H, W = frame.shape[:2]; esc = min(1.0, ANCHO_DET / W)
+        gris = cv2.cvtColor(cv2.resize(frame, (int(W * esc), int(H * esc))) if esc < 1 else frame, cv2.COLOR_BGR2GRAY)
+        t = time.time(); crudas = detector(gris)   # sin ecualizar (E3)
+        dets = [tuple(int(v / esc) for v in c) for c in crudas]
+        cajas = [tuple(p.caja) for p in seg.actualizar(dets)]
+        with LOCK: CAJAS, DETS = cajas, dets; ESTADO["det_ms"] = int((time.time() - t) * 1000)
+
+
 def bucle(fuente):
-    global ULTIMO_JPG, ULTIMO_FRAME
-    detector = Detector()
+    global ULTIMO_JPG, ULTIMO_FRAME, ULTIMO_CRUDO, N_CRUDO
     es_foto = isinstance(fuente, str) and fuente.lower().endswith((".jpg", ".jpeg", ".png"))
     cam = None if es_foto else cv2.VideoCapture(fuente, cv2.CAP_AVFOUNDATION) if fuente == 0 else cv2.VideoCapture(fuente)
     foto = cv2.imread(fuente) if es_foto else None
     if not es_foto and not cam.isOpened():
         ESTADO["error"] = "No se pudo abrir la fuente de video (¿permiso de cámara?)"; return
-    seg = Seguimiento(); t0 = time.time(); n = 0
+    threading.Thread(target=hilo_deteccion, daemon=True).start()
+    t0 = time.time(); n = 0
     while True:
         if es_foto: frame = foto.copy(); time.sleep(0.05)
         else:
@@ -100,13 +117,8 @@ def bucle(fuente):
                 if isinstance(fuente, str): cam.set(cv2.CAP_PROP_POS_FRAMES, 0); continue
                 time.sleep(0.05); continue
         if fuente == 0: frame = cv2.flip(frame, 1)   # efecto espejo de la cámara
-        with LOCK: e = dict(ESTADO)
-        H, W = frame.shape[:2]; esc = ANCHO_DET / W
-        gris = cv2.cvtColor(cv2.resize(frame, (ANCHO_DET, int(H * esc))), cv2.COLOR_BGR2GRAY)
-        crudas = detector(gris)   # sin ecualizar (E3); incluye cabezas inclinadas y perfiles
-        dets = [tuple(int(v / esc) for v in c) for c in crudas]
-        pistas = seg.actualizar(dets)
-        cajas = [tuple(p.caja) for p in pistas]
+        with LOCK:
+            ULTIMO_CRUDO = frame; N_CRUDO += 1; e = dict(ESTADO); cajas, dets = list(CAJAS), list(DETS)
         salida = frame.copy()
         if e["esconder"] and e["caras"]: aplicar(salida, cajas, e["modo"], e["bloque"])
         if e["cajas"]:
@@ -173,7 +185,7 @@ function vista(){const on=$('esconder').checked;$('txtesc').textContent=on?'Sí,
 $('como').classList.toggle('apagado',!on);$('caras').disabled=!on;document.querySelectorAll('input[name=modo]').forEach(r=>r.disabled=!on);$('tam').classList.toggle('apagado',document.querySelector('input[name=modo]:checked').value!=='pixelado')}
 ['esconder','caras','cajas'].forEach(i=>$(i).onchange=()=>{vista();envia()});vista();document.querySelectorAll('input[name=modo],input[name=bloque]').forEach(r=>r.onchange=()=>{vista();envia()});
 $('cap').onclick=async()=>{const r=await (await fetch('/captura',{method:'POST'})).json();$('msg').textContent=' '+(r.ruta||r.error)}
-setInterval(async()=>{try{const e=await (await fetch('/estado')).json();$('n').textContent=e.n_caras;$('fps').textContent=e.fps+' cuadros/s';$('err').textContent=e.error}catch(_){}},500);
+setInterval(async()=>{try{const e=await (await fetch('/estado')).json();$('n').textContent=e.n_caras;$('fps').textContent=e.fps+' cuadros/s · detección '+e.det_ms+' ms';$('err').textContent=e.error}catch(_){}},500);
 </script></body></html>"""
 
 
