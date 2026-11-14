@@ -10,3 +10,6 @@ Mezclar para entrenar (más variedad), agrupando repetidos con dHash ≤ 6 bits 
 
 ## D3 · 2026-11-14 · La demostración corre local, en el portátil de Vincent (no en la nube)
 La cámara en vivo no se sube a ningún servidor: sería mandar caras sin proteger por internet, añade demora y exige HTTPS. Los métodos son clásicos (sin tarjeta gráfica), así que el cuello de botella es el procesador del portátil y se arregla bajando la carga, no con un servidor. GCP queda como plan B (máquina con muchos núcleos para las evaluaciones pesadas) y, al final, posible publicación de la parte de revisión con imágenes de prueba. Decidido por Vincent.
+
+## D4 · 2026-11-14 · Fotos de prueba propias: compañeros del curso, con permiso, solo en el disco local
+Vincent toma fotos de prueba en el aula con compañeros que también están en el proyecto y que se toman fotos de prueba entre sí para los proyectos de cada uno (permiso de ellos, confirmado por Vincent). Se guardan en `salidas_demo/`, que está fuera de git; no se suben al repo ni se usan para entrenar ni para la prueba final (para eso están WIDER y FDDB). Sirven para diagnóstico y para la demostración.
