@@ -10,6 +10,7 @@ import numpy as np
 cv2.setNumThreads(3)   # HILOS
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from detector_caras import Detector, _nms
+from ediciones import editar
 
 # --- parámetros (privacidad: falso negativo peor que falso positivo, D2) ---
 VENTANA, MIN_VOTOS = 9, 5   # votación: la cara se confirma si aparece en >=5 de los últimos 9 cuadros
@@ -64,32 +65,9 @@ class Seguimiento:
         return [p for p in self.pistas if p.confirmada]
 
 
-def pixelar(r, b):
-    """Mosaico exacto: bloques de b×b píxeles, cada uno pintado con el promedio de color de sus píxeles."""
-    h, w = r.shape[:2]; hh, ww = -(-h // b) * b, -(-w // b) * b
-    p = cv2.copyMakeBorder(r, 0, hh - h, 0, ww - w, cv2.BORDER_REPLICATE)
-    m = p.reshape(hh // b, b, ww // b, b, p.shape[2]).mean(axis=(1, 3))
-    return np.repeat(np.repeat(m, b, 0), b, 1)[:h, :w].astype(r.dtype)
-
-
 def aplicar(img, cajas, modo, bloque=16):
-    H, W = img.shape[:2]
-    for x, y, w, h in cajas:
-        mx, my = w * MARGEN, h * MARGEN
-        x0, y0 = int(max(0, x - mx)), int(max(0, y - my)); x1, y1 = int(min(W, x + w + mx)), int(min(H, y + h + my))
-        if modo == "pixelado":   # la cuadrícula parte del (0,0) de la imagen, así los bloques quedan alineados
-            x0, y0 = x0 // bloque * bloque, y0 // bloque * bloque
-        r = img[y0:y1, x0:x1]
-        if r.size == 0: continue
-        if modo == "pixelado":
-            r2 = pixelar(r, bloque)
-        else:
-            # el desenfoque se hace sobre la región reducida a la cuarta parte (mismo aspecto, mucho menos cálculo)
-            h0, w0 = r.shape[:2]; q = cv2.resize(r, (max(1, w0 // 4), max(1, h0 // 4)), interpolation=cv2.INTER_AREA)
-            k = max(7, ((w0 // 8) | 1))
-            q = cv2.GaussianBlur(cv2.GaussianBlur(q, (k, k), 0), (k, k), 0)
-            r2 = cv2.resize(q, (w0, h0), interpolation=cv2.INTER_LINEAR)
-        img[y0:y1, x0:x1] = r2
+    for caja in cajas:
+        editar(img, caja, modo, MARGEN, bloque)
 
 
 def hilo_deteccion():

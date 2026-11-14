@@ -1,0 +1,3 @@
+train imágenes generadas: 3000
+val imágenes generadas: 600
+test imágenes generadas: 600

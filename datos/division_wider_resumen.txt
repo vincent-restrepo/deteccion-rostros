@@ -1,0 +1,6 @@
+imágenes: 12880
+grupos: 12848
+grupo más grande: 11
+imágenes en grupos de 2 o más: 48
+división: {'train': 9016, 'val': 1932, 'test': 1932}
+umbral dHash: 6 bits; semilla: 20261114

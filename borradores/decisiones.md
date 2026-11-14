@@ -13,3 +13,10 @@ La cámara en vivo no se sube a ningún servidor: sería mandar caras sin proteg
 
 ## D4 · 2026-11-14 · Fotos de prueba propias: compañeros del curso, con permiso, solo en el disco local
 Vincent toma fotos de prueba en el aula con compañeros que también están en el proyecto y que se toman fotos de prueba entre sí para los proyectos de cada uno (permiso de ellos, confirmado por Vincent). Se guardan en `salidas_demo/`, que está fuera de git; no se suben al repo ni se usan para entrenar ni para la prueba final (para eso están WIDER y FDDB). Sirven para diagnóstico y para la demostración.
+
+## D5 · 2026-11-14 · Diseño de la parte B (revisor de alteraciones)
+- Entrada: una imagen guardada. Salida: lista de regiones alteradas, cada una con su tipo: desenfoque, pixelado o tapado (color plano). Más tipos (ruido, mosaico revuelto, oscurecer) se agregan después, de a uno, con su medición.
+- Datos: no hay un dataset de caras alteradas; se genera. Se toman caras de WIDER (≥ 48 px, D1), se aplica una edición al azar (parámetros al azar; pixelado con bloque 4–64 y cuadrícula alineada al (0,0), como la app) y se guarda la región y el tipo reales. Algunas imágenes se dejan sin editar (negativos) y se recomprimen en JPEG con calidad al azar (70–95), porque las capturas reales son JPEG.
+- Sin fuga: antes de generar, las imágenes de WIDER se agrupan por dHash ≤ 6 y se dividen por grupo en entrenamiento 70 % / validación 15 % / prueba 15 % (semilla fija). La prueba se usa una sola vez, al final.
+- Método: rasgos clásicos por ventana (varianza del Laplaciano, energía de gradiente en la cuadrícula del pixelado, fracción de píxeles de color plano, contraste con el borde de la región) + clasificador clásico (SVM, bosque o k-NN, el mejor en validación) + unión de ventanas en cajas. Línea base trivial: «nunca hay alteración» y «todo es desenfoque».
+- Honestidad: las ediciones sintéticas son las mismas que aplica la app; el revisor podría fallar con ediciones hechas en otros programas. Se declara como límite y, si hay tiempo, se prueba con una captura real de la app.
