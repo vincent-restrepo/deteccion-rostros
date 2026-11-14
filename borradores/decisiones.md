@@ -38,3 +38,6 @@ Vincent pidió agregar ruido y tapado sólido y cambiar los botones de modo por 
 - El ruido gaussiano de σ hasta 150 dejaba ver mucho de la cara. Ahora el ruido mezcla la región con ruido uniforme: (1 − a)·imagen + a·ruido, con a = intensidad / 100 (slider 10–100 %). Al 100 % es ruido puro: la correlación con la cara original medida es 0,01 (al 80 %: 0,07).
 - Se elimina «Mostrar cajas» (casilla, dibujo y estado del servidor): aportaba poco, según Vincent.
 - Consecuencia para la parte B: los tapados ovalados ya no son rectángulos planos completos (relleno 0,785, y la regla de E10 exige 0,8); hay que ajustar la regla y medirla con óvalos (pendiente, junto con el ruido).
+
+## D11 · 2026-11-14 · La prohibición de YOLO y del deep learning queda explícita en la documentación
+Vincent pidió dejar dicho que no se puede usar YOLO, porque ahora trabaja más gente (y sus asistentes de IA) y el dataset `wider-face-for-yolo-training` puede confundir por el nombre. Se agregó un aviso destacado al inicio de `README.md` y de `AGENTS.md`, y una línea al principio de «Reglas del curso» en `brief.md`: no se usa YOLO ni ninguna red neuronal, aunque venga preentrenada; el nombre del dataset solo se refiere al formato de sus etiquetas. La regla viene del profesor (D14 del proyecto anterior).

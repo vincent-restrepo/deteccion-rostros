@@ -9,6 +9,11 @@ Dos partes:
 
 Antes de tocar nada, lee `brief.md` (objetivo y reglas) y `borradores/decisiones.md` (qué se decidió y por qué). **Si trabajas con un asistente de IA (Claude Code, Codex, Cursor…), él lee `AGENTS.md`**: ahí están las reglas, los datasets que hay que descargar y el protocolo para entrenar y evaluar.
 
+> ## Regla del curso: NO se puede usar YOLO (ni ninguna red neuronal)
+> El profesor fijó que el proyecto es **solo visión clásica: todo menos deep learning**. Eso incluye **YOLO** (en cualquier versión), SSD, las redes de OpenCV (`cv2.dnn`, res10), YuNet, MediaPipe, MTCNN, dlib CNN y los embeddings tipo FaceNet, **aunque vengan preentrenados**. No instales `ultralytics`, `torch`, `tensorflow` ni `keras`.
+>
+> **Ojo con el nombre de un dataset:** `lylmsc/wider-face-for-yolo-training` (carpeta `entradas/wider-yolo`) dice «yolo» solo porque sus etiquetas están escritas en el *formato* que usa YOLO (un archivo de texto por imagen con `clase cx cy ancho alto`). **No usamos el modelo YOLO**: solo leemos esas cajas como texto.
+
 ## 1. Instalación
 
 Probado en macOS con Python 3.13. En Linux y Windows no se ha probado.
