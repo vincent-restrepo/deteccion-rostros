@@ -1,0 +1,44 @@
+{
+ "division": "val",
+ "imagenes": 300,
+ "regiones_reales": 505,
+ "localizadas_IoU0.5": 326,
+ "falsas": 1155,
+ "recall_localizacion": 0.646,
+ "precision_localizacion": 0.22,
+ "tipo_correcto_entre_localizadas": 0.807,
+ "recall_con_tipo_correcto": 0.521,
+ "por_tipo": {
+  "desenfoque": {
+   "reales": 154,
+   "localizadas": 87,
+   "tipo_ok": 85,
+   "recall_loc": 0.565
+  },
+  "pixelado": {
+   "reales": 200,
+   "localizadas": 139,
+   "tipo_ok": 127,
+   "recall_loc": 0.695
+  },
+  "tapado": {
+   "reales": 151,
+   "localizadas": 100,
+   "tipo_ok": 51,
+   "recall_loc": 0.662
+  }
+ },
+ "confusion_real_predicho": {
+  "desenfoque->desenfoque": 85,
+  "desenfoque->tapado": 2,
+  "pixelado->desenfoque": 10,
+  "pixelado->pixelado": 127,
+  "pixelado->tapado": 2,
+  "tapado->desenfoque": 46,
+  "tapado->pixelado": 3,
+  "tapado->tapado": 51
+ },
+ "imagenes_sin_edicion": 84,
+ "con_alarma": 55,
+ "segundos_por_imagen": 0.42
+}
