@@ -24,7 +24,7 @@ def iou(a, b):
 
 if __name__ == "__main__":
     div, n = sys.argv[1], int(sys.argv[2]); sem = int(sys.argv[3]) if len(sys.argv) > 3 else 1
-    from rutas import exigir; exigir("datos/division_wider.csv", "Primero: python src/dividir_wider.py (ver README.md).")
+    from rutas import exigir; exigir("datos/division_wider.csv", "Primero: python src/dividir_wider.py (ver README.md)."); exigir("entradas/wider-yolo/images", "Descarga WIDER: ver README.md, sección «Datos».")
     rng = random.Random(sem)
     rutas = [r["ruta"] for r in csv.DictReader(open("datos/division_wider.csv")) if r["division"] == div]
     rng.shuffle(rutas); carpeta = f"datos/alteradas/{div}"; os.makedirs(f"{carpeta}/imgs", exist_ok=True)
