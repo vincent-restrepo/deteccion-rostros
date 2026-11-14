@@ -1,5 +1,5 @@
 """Ediciones que esconden una cara. Una sola fuente de verdad: las usan la app (parte A) y el generador de imágenes
-alteradas (parte B). Tipos: "desenfoque", "pixelado", "tapado". Cada función edita la imagen en el lugar y devuelve la región
+alteradas (parte B). Tipos de la parte B (el revisor los conoce): "desenfoque", "pixelado", "tapado". Además la app ofrece "ruido" (el revisor aún no lo reconoce). Cada función edita la imagen en el lugar y devuelve la región
 realmente modificada (x0, y0, x1, y1)."""
 import cv2, numpy as np
 
@@ -26,7 +26,7 @@ def region(forma, caja, margen, bloque=None):
     if bloque: x0, y0 = x0 // bloque * bloque, y0 // bloque * bloque
     return x0, y0, x1, y1
 
-def editar(img, caja, tipo, margen=0.25, bloque=16, fuerza=1.0, color=(0, 0, 0), forma="rect"):
+def editar(img, caja, tipo, margen=0.25, bloque=16, fuerza=1.0, color=(0, 0, 0), forma="rect", ruido=40):
     """forma = "rect" (toda la región) u "ovalo" (la elipse inscrita en la región: sigue mejor la forma de una cara).
     Devuelve siempre el rectángulo que contiene la edición."""
     b = bloque if tipo == "pixelado" else None
@@ -35,7 +35,11 @@ def editar(img, caja, tipo, margen=0.25, bloque=16, fuerza=1.0, color=(0, 0, 0),
     if r.size == 0: return None
     if tipo == "pixelado": r2 = pixelar(r, bloque)
     elif tipo == "desenfoque": r2 = desenfocar(r, fuerza)
-    elif tipo == "tapado": r2 = np.empty_like(r); r2[:] = np.array(color, dtype=img.dtype)
+    elif tipo == "tapado":
+        if isinstance(color, str): color = r.reshape(-1, 3).mean(0) if color == "promedio" else ((255, 255, 255) if color == "blanco" else (0, 0, 0))
+        r2 = np.empty_like(r); r2[:] = np.array(color, dtype=img.dtype)
+    elif tipo == "ruido":   # suma ruido gaussiano de desviación `ruido` (0–255) a cada canal; con valores altos tapa casi todo
+        r2 = np.clip(r.astype(np.float32) + np.random.default_rng().normal(0, ruido, r.shape), 0, 255).astype(img.dtype)
     else: raise ValueError(tipo)
     if forma == "ovalo":
         h, w = r.shape[:2]; m = np.zeros((h, w), np.uint8); cv2.ellipse(m, (w // 2, h // 2), (max(1, w // 2), max(1, h // 2)), 0, 0, 360, 255, -1)
