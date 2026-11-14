@@ -17,3 +17,6 @@ datos-propios/
 *.mov
 *.mp4
 salidas_demo/
+
+# Candidatas de E11 (se regeneran con src/verificador.py)
+datos/*.pkl
