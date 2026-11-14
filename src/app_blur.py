@@ -21,7 +21,7 @@ FPS_MAX = 20                # tope de cuadros por segundo del video mostrado
 HILOS = 3                   # hilos que puede usar OpenCV (para no calentar el equipo)
 INTERVALO = 0.4             # segundos mínimos entre detecciones (≈ 2,5 por segundo): cada una cuesta ≈ 0,3 s de procesador (E8)
 
-ESTADO = {"esconder": True, "caras": True, "cajas": False, "modo": "desenfoque", "bloque": 16,
+ESTADO = {"esconder": True, "cajas": False, "modo": "desenfoque", "bloque": 16,
           "n_caras": 0, "fps": 0.0, "det_ms": 0, "fuente": "", "error": ""}
 LOCK = threading.Lock()
 ULTIMO_JPG = None
@@ -137,7 +137,7 @@ def bucle(fuente):
         with LOCK:
             ULTIMO_CRUDO = frame; N_CRUDO += 1; e = dict(ESTADO); cajas, dets = list(CAJAS), list(DETS)
         salida = frame.copy()
-        if e["esconder"] and e["caras"]: aplicar(salida, cajas, e["modo"], e["bloque"])
+        if e["esconder"]: aplicar(salida, cajas, e["modo"], e["bloque"])
         if e["cajas"]:
             for d in dets: cv2.rectangle(salida, (d[0], d[1]), (d[0] + d[2], d[1] + d[3]), (0, 200, 255), 2)
             for c in cajas: cv2.rectangle(salida, (int(c[0]), int(c[1])), (int(c[0] + c[2]), int(c[1] + c[3])), (0, 255, 0), 2)
@@ -178,8 +178,6 @@ button:hover{border-color:var(--acc)}#err{color:#c0392b;margin-top:8px}
 <h1>Desenfoque de privacidad</h1>
 <h2>Esconder</h2>
 <label class="sw"><input type="checkbox" id="esconder" checked><span class="pista"></span><span id="txtesc">Sí, esconder</span></label>
-<h2>Qué esconder</h2>
-<label><input type="checkbox" id="caras" checked> Caras</label>
 <div id="como">
 <h2>Cómo esconder</h2>
 <label><input type="radio" name="modo" value="desenfoque" checked> Desenfoque</label>
@@ -196,11 +194,11 @@ button:hover{border-color:var(--acc)}#err{color:#c0392b;margin-top:8px}
 </aside></main>
 <script>
 const $=id=>document.getElementById(id);
-async function envia(){await fetch('/estado',{method:'POST',body:JSON.stringify({esconder:$('esconder').checked,caras:$('caras').checked,cajas:$('cajas').checked,
+async function envia(){await fetch('/estado',{method:'POST',body:JSON.stringify({esconder:$('esconder').checked,cajas:$('cajas').checked,
 modo:document.querySelector('input[name=modo]:checked').value,bloque:+document.querySelector('input[name=bloque]:checked').value})})}
 function vista(){const on=$('esconder').checked;$('txtesc').textContent=on?'Sí, esconder':'No, mostrar todo';
-$('como').classList.toggle('apagado',!on);$('caras').disabled=!on;document.querySelectorAll('input[name=modo]').forEach(r=>r.disabled=!on);$('tam').classList.toggle('apagado',document.querySelector('input[name=modo]:checked').value!=='pixelado')}
-['esconder','caras','cajas'].forEach(i=>$(i).onchange=()=>{vista();envia()});vista();document.querySelectorAll('input[name=modo],input[name=bloque]').forEach(r=>r.onchange=()=>{vista();envia()});
+$('como').classList.toggle('apagado',!on);document.querySelectorAll('input[name=modo]').forEach(r=>r.disabled=!on);$('tam').classList.toggle('apagado',document.querySelector('input[name=modo]:checked').value!=='pixelado')}
+['esconder','cajas'].forEach(i=>$(i).onchange=()=>{vista();envia()});vista();document.querySelectorAll('input[name=modo],input[name=bloque]').forEach(r=>r.onchange=()=>{vista();envia()});
 $('cap').onclick=async()=>{const r=await (await fetch('/captura',{method:'POST'})).json();$('msg').textContent=' '+(r.ruta||r.error)}
 setInterval(async()=>{try{const e=await (await fetch('/estado')).json();$('n').textContent=e.n_caras;$('fps').textContent=e.fps+' cuadros/s · detección '+e.det_ms+' ms';$('err').textContent=e.error}catch(_){}},500);
 </script></body></html>"""
@@ -235,7 +233,7 @@ class H(BaseHTTPRequestHandler):
         if self.path == "/estado":
             d = json.loads(cuerpo or b"{}")
             with LOCK:
-                for k in ("esconder", "caras", "cajas"):
+                for k in ("esconder", "cajas"):
                     if k in d: ESTADO[k] = bool(d[k])
                 if d.get("bloque") in (4, 8, 16, 32, 64): ESTADO["bloque"] = d["bloque"]
                 if d.get("modo") in ("desenfoque", "pixelado"): ESTADO["modo"] = d["modo"]
