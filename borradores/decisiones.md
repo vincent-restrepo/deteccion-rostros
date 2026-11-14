@@ -29,3 +29,6 @@ Vincent: el desenfoque se hacía en un cuadrado y prefiere un óvalo que siga la
 
 ## D8 · 2026-11-14 · Sliders de intensidad en la app (bloque 4–64 y desenfoque 0,2–3,0)
 Vincent: el pixelado y el desenfoque deben tener cada uno un slider para mover la intensidad en vivo (le gustó el slider de la página de explicación más que los botones 4/8/16/32/64). Pixelado: bloque entero de 4 a 64 px. Desenfoque: `fuerza` de 0,2 a 3,0 (1,0 = valor anterior), relativa al tamaño de la cara. El panel muestra solo el slider del modo elegido, y al abrir la página se sincroniza el servidor con los controles.
+
+## D9 · 2026-11-14 · Menú desplegable de filtros: desenfoque, pixelado, tapado sólido y ruido
+Vincent pidió agregar ruido y tapado sólido y cambiar los botones de modo por un menú desplegable porque ya son varios. La app ofrece: Desenfoque (óvalo, slider de intensidad), Pixelado (slider de bloque 4–64), Tapado sólido (color negro, blanco o promedio de la cara) y Ruido (gaussiano, desviación 10–150; con poco ruido la cara se puede recuperar). Cada modo muestra solo sus controles. El tapado ya lo conocía el revisor (parte B); el ruido todavía no: queda pendiente agregarlo al generador de datos y medirlo (el revisor sin entrenar buscaría una varianza alta y sin estructura).
