@@ -25,7 +25,7 @@ Todo menos deep learning. Entran HOG+SVM (incluido el detector de dlib), Haar, L
 - Protocolo: división sin fuga (casi repetidas con dHash ≤ 6 bits, dividir por grupo); la prueba se usa una sola vez; resultados por dataset y dejando un dataset fuera; línea base trivial; fallos reportados con honestidad. Detección: precisión, recall y AP con IoU ≥ 0,5, por tamaño de cara y por número de caras por imagen.
 
 ## Fuentes conocidas
-Ver `borradores/procesamiento-dataset.md`. Antecedente: repo `vincent-restrepo/desenfoque-privacidad` (E1–E6, D1–D14), en solo lectura.
+Ver `borradores/procesamiento-dataset.md`. Antecedente: el proyecto anterior (repo eliminado el 2026-11-14); lo que se hereda está en `borradores/antecedentes-proyecto-anterior.md`.
 
 ## Pendiente
 - Tamaño mínimo de cara en alcance (recomendación: 48 px de alto).

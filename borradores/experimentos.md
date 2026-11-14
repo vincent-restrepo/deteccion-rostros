@@ -1,6 +1,6 @@
 # Experimentos · deteccion-rostros
 
-E1, E2, … con configuración y resultado. (Los E1–E6 del proyecto anterior están en el repo desenfoque-privacidad.)
+E1, E2, … con configuración y resultado. (Los resultados E1, E3, E5 y E6 del proyecto anterior, cuyo repositorio se eliminó, están resumidos en `antecedentes-proyecto-anterior.md`.)
 
 
 ## E7 · 2026-11-14 · Detectores clásicos con el alcance de D1 (caras ≥ 48 px de alto)
