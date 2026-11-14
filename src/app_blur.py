@@ -22,7 +22,7 @@ FPS_MAX = 20                # tope de cuadros por segundo del video mostrado
 HILOS = 3                   # hilos que puede usar OpenCV (para no calentar el equipo)
 INTERVALO = 0.4             # segundos mínimos entre detecciones (≈ 2,5 por segundo): cada una cuesta ≈ 0,3 s de procesador (E8)
 
-ESTADO = {"esconder": True, "cajas": False, "modo": "desenfoque", "bloque": 16, "forma": "ovalo",
+ESTADO = {"esconder": True, "cajas": False, "modo": "desenfoque", "bloque": 16,
           "n_caras": 0, "fps": 0.0, "det_ms": 0, "fuente": "", "error": ""}
 LOCK = threading.Lock()
 ULTIMO_JPG = None
@@ -83,7 +83,8 @@ def unir(cajas, umbral=0.3):
     return [tuple(c) for c in cajas]
 
 
-def aplicar(img, cajas, modo, bloque=16, forma="ovalo"):
+def aplicar(img, cajas, modo, bloque=16):
+    forma = "ovalo" if modo == "desenfoque" else "rect"   # D7: el óvalo es solo para el desenfoque; el pixelado va en rectángulo
     for caja in unir(cajas):
         editar(img, caja, modo, MARGEN, bloque, forma=forma)
 
@@ -152,7 +153,7 @@ def bucle(fuente):
         else: vivas = mover(prev, cur, vivas, pq)           # si no, las cajas siguen a la cara
         prev = cur; cajas = vivas
         salida = frame.copy()
-        if e["esconder"]: aplicar(salida, cajas, e["modo"], e["bloque"], e["forma"])
+        if e["esconder"]: aplicar(salida, cajas, e["modo"], e["bloque"])
         if e["cajas"]:
             for d in dets: cv2.rectangle(salida, (d[0], d[1]), (d[0] + d[2], d[1] + d[3]), (0, 200, 255), 2)
             for c in cajas: cv2.rectangle(salida, (int(c[0]), int(c[1])), (int(c[0] + c[2]), int(c[1] + c[3])), (0, 255, 0), 2)
@@ -197,8 +198,6 @@ button:hover{border-color:var(--acc)}#err{color:#c0392b;margin-top:8px}
 <h2>Cómo esconder</h2>
 <label><input type="radio" name="modo" value="desenfoque" checked> Desenfoque</label>
 <label><input type="radio" name="modo" value="pixelado"> Pixelado</label>
-<div id="forma"><small>Forma de la zona escondida</small>
-<div class="chips"><label><input type="radio" name="forma" value="ovalo" checked>Óvalo</label><label><input type="radio" name="forma" value="rect">Rectángulo</label></div></div>
 <div id="tam"><small>Tamaño del bloque (píxeles de la imagen): cada bloque N×N se pinta con su color promedio</small>
 <div class="chips"><label><input type="radio" name="bloque" value="4">4×4</label><label><input type="radio" name="bloque" value="8">8×8</label><label><input type="radio" name="bloque" value="16" checked>16×16</label><label><input type="radio" name="bloque" value="32">32×32</label><label><input type="radio" name="bloque" value="64">64×64</label></div></div>
 </div>
@@ -212,10 +211,10 @@ button:hover{border-color:var(--acc)}#err{color:#c0392b;margin-top:8px}
 <script>
 const $=id=>document.getElementById(id);
 async function envia(){await fetch('/estado',{method:'POST',body:JSON.stringify({esconder:$('esconder').checked,cajas:$('cajas').checked,
-modo:document.querySelector('input[name=modo]:checked').value,bloque:+document.querySelector('input[name=bloque]:checked').value,forma:document.querySelector('input[name=forma]:checked').value})})}
+modo:document.querySelector('input[name=modo]:checked').value,bloque:+document.querySelector('input[name=bloque]:checked').value})})}
 function vista(){const on=$('esconder').checked;$('txtesc').textContent=on?'Sí, esconder':'No, mostrar todo';
 $('como').classList.toggle('apagado',!on);document.querySelectorAll('input[name=modo]').forEach(r=>r.disabled=!on);$('tam').classList.toggle('apagado',document.querySelector('input[name=modo]:checked').value!=='pixelado')}
-['esconder','cajas'].forEach(i=>$(i).onchange=()=>{vista();envia()});vista();document.querySelectorAll('input[name=modo],input[name=bloque],input[name=forma]').forEach(r=>r.onchange=()=>{vista();envia()});
+['esconder','cajas'].forEach(i=>$(i).onchange=()=>{vista();envia()});vista();document.querySelectorAll('input[name=modo],input[name=bloque]').forEach(r=>r.onchange=()=>{vista();envia()});
 $('cap').onclick=async()=>{const r=await (await fetch('/captura',{method:'POST'})).json();$('msg').textContent=' '+(r.ruta||r.error)}
 setInterval(async()=>{try{const e=await (await fetch('/estado')).json();$('n').textContent=e.n_caras;$('fps').textContent=e.fps+' cuadros/s · detección '+e.det_ms+' ms';$('err').textContent=e.error}catch(_){}},500);
 </script></body></html>"""
@@ -253,7 +252,6 @@ class H(BaseHTTPRequestHandler):
                 for k in ("esconder", "cajas"):
                     if k in d: ESTADO[k] = bool(d[k])
                 if d.get("bloque") in (4, 8, 16, 32, 64): ESTADO["bloque"] = d["bloque"]
-                if d.get("forma") in ("ovalo", "rect"): ESTADO["forma"] = d["forma"]
                 if d.get("modo") in ("desenfoque", "pixelado"): ESTADO["modo"] = d["modo"]
             self._json({"ok": True})
         elif self.path == "/captura":
