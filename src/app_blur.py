@@ -16,7 +16,7 @@ RETENER = 20                # cuadros que se sigue difuminando una cara confirma
 MARGEN = 0.25               # se agranda la caja un 25 % para cubrir frente y mentón
 ANCHO_DET = 1280            # se detecta reduciendo a este ancho como máximo; a 480 se perdían las caras del fondo (E8)
 
-ESTADO = {"esconder": True, "caras": True, "documentos": False, "cajas": False, "modo": "desenfoque", "bloque": 16,
+ESTADO = {"esconder": True, "caras": True, "cajas": False, "modo": "desenfoque", "bloque": 16,
           "n_caras": 0, "fps": 0.0, "det_ms": 0, "fuente": "", "error": ""}
 LOCK = threading.Lock()
 ULTIMO_JPG = None
@@ -162,7 +162,6 @@ button:hover{border-color:var(--acc)}#err{color:#c0392b;margin-top:8px}
 <label class="sw"><input type="checkbox" id="esconder" checked><span class="pista"></span><span id="txtesc">Sí, esconder</span></label>
 <h2>Qué esconder</h2>
 <label><input type="checkbox" id="caras" checked> Caras</label>
-<label class="off"><input type="checkbox" id="documentos" disabled> Documentos de identidad <small>(próximamente)</small></label>
 <div id="como">
 <h2>Cómo esconder</h2>
 <label><input type="radio" name="modo" value="desenfoque" checked> Desenfoque</label>
