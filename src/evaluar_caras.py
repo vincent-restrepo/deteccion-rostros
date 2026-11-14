@@ -5,7 +5,8 @@ import sys, os, glob, random, json, time
 import cv2, numpy as np
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from detector_caras import Detector
-RAIZ = "entradas/wider-face-for-yolo-training"
+RAIZ = "entradas/wider-yolo"
+MIN_ALCANCE = 48   # D1: las caras de menos de 48 px de alto quedan fuera de alcance: ni suman recall ni penalizan precisión
 ANCHO = 800
 haar = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_alt2.xml")
 
@@ -25,6 +26,12 @@ def iou(a, b):
 def haar_solo(g): return [tuple(int(v) for v in c) for c in haar.detectMultiScale(g, 1.1, 3, minSize=(24, 24))]
 def nuevo(g): return Detector()(g)
 
+def fusion(g):
+    """Unión de dlib HOG (x1) y Haar con giros/perfiles; se queda con la caja más grande cuando se solapan."""
+    from detector_caras import _nms
+    a = dlib_hog(1)(g); b = Detector()(g)
+    return [c for c, _ in _nms([(c, 0) for c in a + b])]
+
 def dlib_hog(sube):
     import dlib
     det = dlib.get_frontal_face_detector()
@@ -38,7 +45,7 @@ if __name__ == "__main__":
     bins = [(0, 24), (24, 48), (48, 96), (96, 10**6)]
     res = {}
     elegidos = sys.argv[3].split(",") if len(sys.argv) > 3 else ["haar_0grados", "giros_y_perfil"]
-    todos = {"haar_0grados": haar_solo, "giros_y_perfil": nuevo, "dlib_hog_x0": None, "dlib_hog_x1": None, "dlib_hog_x2": None}
+    todos = {"haar_0grados": haar_solo, "giros_y_perfil": nuevo, "dlib_hog_x0": None, "dlib_hog_x1": None, "dlib_hog_x2": None, "fusion": fusion}
     for nombre in elegidos:
         fn = todos[nombre]
         if nombre.startswith("dlib_hog_x"): fn = dlib_hog(int(nombre[-1]))
@@ -52,16 +59,17 @@ if __name__ == "__main__":
             usadas += 1; esc = min(1.0, ANCHO / W)
             g = cv2.cvtColor(cv2.resize(im, (int(W * esc), int(H * esc))) if esc < 1 else im, cv2.COLOR_BGR2GRAY)
             pred = [tuple(int(v / esc) for v in p) for p in fn(g)]
-            usado = set()
+            usado = set(); dentro = [j for j, g_ in enumerate(gt) if g_[3] >= MIN_ALCANCE]
             for p in pred:
-                m = [(iou(p, g_), j) for j, g_ in enumerate(gt) if j not in usado]
-                if m and max(m)[0] >= 0.5: usado.add(max(m)[1]); tp += 1
-                else: fp += 1
-            for j, g_ in enumerate(gt):
-                b = next(b for b in bins if b[0] <= g_[3] < b[1]); por[b][1] += 1
+                m = [(iou(p, gt[j]), j) for j in dentro if j not in usado]
+                if m and max(m)[0] >= 0.5: usado.add(max(m)[1]); tp += 1; continue
+                if any(iou(p, g_) >= 0.3 for j, g_ in enumerate(gt) if j not in dentro): continue   # acierta una cara fuera de alcance: se ignora
+                fp += 1
+            for j in dentro:
+                g_ = gt[j]; b = next(b for b in bins if b[0] <= g_[3] < b[1]); por[b][1] += 1
                 if j in usado: por[b][0] += 1
-            fn_ += len(gt) - len(usado)
-        rec = tp / (tp + fn_); pre = tp / (tp + fp) if tp + fp else 0
+            fn_ += len(dentro) - len(usado)
+        rec = tp / max(1, tp + fn_); pre = tp / (tp + fp) if tp + fp else 0
         res[nombre] = {"imagenes": usadas, "tp": tp, "fp": fp, "fn": fn_, "recall": round(rec, 3), "precision": round(pre, 3),
                        "recall_por_alto_px": {f"{a}-{b if b < 10**6 else 'mas'}": [por[(a, b)][0], por[(a, b)][1], round(por[(a, b)][0] / max(1, por[(a, b)][1]), 3)] for a, b in bins},
                        "segundos_por_imagen": round((time.time() - t0) / max(1, usadas), 2)}
