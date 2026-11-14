@@ -16,7 +16,7 @@ RETENER = 20                # cuadros que se sigue difuminando una cara confirma
 MARGEN = 0.25               # se agranda la caja un 25 % para cubrir frente y mentón
 ANCHO_DET = 480             # se detecta en una imagen reducida a este ancho (más rápido)
 
-ESTADO = {"esconder": True, "caras": True, "documentos": False, "cajas": False, "modo": "desenfoque",
+ESTADO = {"esconder": True, "caras": True, "documentos": False, "cajas": False, "modo": "desenfoque", "bloque": 16,
           "n_caras": 0, "fps": 0.0, "fuente": "", "error": ""}
 LOCK = threading.Lock()
 ULTIMO_JPG = None
@@ -58,17 +58,25 @@ class Seguimiento:
         return [p for p in self.pistas if p.confirmada]
 
 
-def aplicar(img, cajas, modo):
+def pixelar(r, b):
+    """Mosaico exacto: bloques de b×b píxeles, cada uno pintado con el promedio de color de sus píxeles."""
+    h, w = r.shape[:2]; hh, ww = -(-h // b) * b, -(-w // b) * b
+    p = cv2.copyMakeBorder(r, 0, hh - h, 0, ww - w, cv2.BORDER_REPLICATE)
+    m = p.reshape(hh // b, b, ww // b, b, p.shape[2]).mean(axis=(1, 3))
+    return np.repeat(np.repeat(m, b, 0), b, 1)[:h, :w].astype(r.dtype)
+
+
+def aplicar(img, cajas, modo, bloque=16):
     H, W = img.shape[:2]
     for x, y, w, h in cajas:
         mx, my = w * MARGEN, h * MARGEN
         x0, y0 = int(max(0, x - mx)), int(max(0, y - my)); x1, y1 = int(min(W, x + w + mx)), int(min(H, y + h + my))
+        if modo == "pixelado":   # la cuadrícula parte del (0,0) de la imagen, así los bloques quedan alineados
+            x0, y0 = x0 // bloque * bloque, y0 // bloque * bloque
         r = img[y0:y1, x0:x1]
         if r.size == 0: continue
         if modo == "pixelado":
-            b = max(6, (x1 - x0) // 10)
-            r2 = cv2.resize(cv2.resize(r, (max(1, (x1 - x0) // b), max(1, (y1 - y0) // b)), interpolation=cv2.INTER_LINEAR),
-                            (x1 - x0, y1 - y0), interpolation=cv2.INTER_NEAREST)
+            r2 = pixelar(r, bloque)
         else:
             k = max(15, ((x1 - x0) // 2) | 1)
             r2 = cv2.GaussianBlur(r, (k, k), 0); r2 = cv2.GaussianBlur(r2, (k, k), 0)
@@ -100,7 +108,7 @@ def bucle(fuente):
         pistas = seg.actualizar(dets)
         cajas = [tuple(p.caja) for p in pistas]
         salida = frame.copy()
-        if e["esconder"] and e["caras"]: aplicar(salida, cajas, e["modo"])
+        if e["esconder"] and e["caras"]: aplicar(salida, cajas, e["modo"], e["bloque"])
         if e["cajas"]:
             for d in dets: cv2.rectangle(salida, (d[0], d[1]), (d[0] + d[2], d[1] + d[3]), (0, 200, 255), 2)
             for c in cajas: cv2.rectangle(salida, (int(c[0]), int(c[1])), (int(c[0] + c[2]), int(c[1] + c[3])), (0, 255, 0), 2)
@@ -131,7 +139,7 @@ label{display:flex;gap:10px;align-items:center;padding:8px 0;cursor:pointer}inpu
 .pista::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:left .15s}
 .sw input:checked+.pista{background:var(--acc)}.sw input:checked+.pista::after{left:23px}
 .sw input:focus-visible+.pista{outline:2px solid var(--acc);outline-offset:2px}
-#como.apagado{opacity:.4;pointer-events:none}small{color:var(--mut)}
+.chips{display:flex;flex-wrap:wrap;gap:4px 12px}.chips label{padding:4px 0}#tam.apagado{opacity:.4;pointer-events:none}#como.apagado{opacity:.4;pointer-events:none}small{color:var(--mut)}
 .num{font-size:34px;font-weight:600}button{width:100%;padding:10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit;cursor:pointer;margin-top:8px}
 button:hover{border-color:var(--acc)}#err{color:#c0392b;margin-top:8px}
 </style></head><body><main>
@@ -147,6 +155,8 @@ button:hover{border-color:var(--acc)}#err{color:#c0392b;margin-top:8px}
 <h2>Cómo esconder</h2>
 <label><input type="radio" name="modo" value="desenfoque" checked> Desenfoque</label>
 <label><input type="radio" name="modo" value="pixelado"> Pixelado</label>
+<div id="tam"><small>Tamaño del bloque (píxeles de la imagen): cada bloque N×N se pinta con su color promedio</small>
+<div class="chips"><label><input type="radio" name="bloque" value="4">4×4</label><label><input type="radio" name="bloque" value="8">8×8</label><label><input type="radio" name="bloque" value="16" checked>16×16</label><label><input type="radio" name="bloque" value="32">32×32</label><label><input type="radio" name="bloque" value="64">64×64</label></div></div>
 </div>
 <h2>Depuración</h2>
 <label><input type="checkbox" id="cajas"> Mostrar cajas <small>(naranja: detección; verde: confirmada)</small></label>
@@ -158,10 +168,10 @@ button:hover{border-color:var(--acc)}#err{color:#c0392b;margin-top:8px}
 <script>
 const $=id=>document.getElementById(id);
 async function envia(){await fetch('/estado',{method:'POST',body:JSON.stringify({esconder:$('esconder').checked,caras:$('caras').checked,cajas:$('cajas').checked,
-modo:document.querySelector('input[name=modo]:checked').value})})}
+modo:document.querySelector('input[name=modo]:checked').value,bloque:+document.querySelector('input[name=bloque]:checked').value})})}
 function vista(){const on=$('esconder').checked;$('txtesc').textContent=on?'Sí, esconder':'No, mostrar todo';
-$('como').classList.toggle('apagado',!on);$('caras').disabled=!on;document.querySelectorAll('input[name=modo]').forEach(r=>r.disabled=!on)}
-['esconder','caras','cajas'].forEach(i=>$(i).onchange=()=>{vista();envia()});vista();document.querySelectorAll('input[name=modo]').forEach(r=>r.onchange=envia);
+$('como').classList.toggle('apagado',!on);$('caras').disabled=!on;document.querySelectorAll('input[name=modo]').forEach(r=>r.disabled=!on);$('tam').classList.toggle('apagado',document.querySelector('input[name=modo]:checked').value!=='pixelado')}
+['esconder','caras','cajas'].forEach(i=>$(i).onchange=()=>{vista();envia()});vista();document.querySelectorAll('input[name=modo],input[name=bloque]').forEach(r=>r.onchange=()=>{vista();envia()});
 $('cap').onclick=async()=>{const r=await (await fetch('/captura',{method:'POST'})).json();$('msg').textContent=' '+(r.ruta||r.error)}
 setInterval(async()=>{try{const e=await (await fetch('/estado')).json();$('n').textContent=e.n_caras;$('fps').textContent=e.fps+' cuadros/s';$('err').textContent=e.error}catch(_){}},500);
 </script></body></html>"""
@@ -198,6 +208,7 @@ class H(BaseHTTPRequestHandler):
             with LOCK:
                 for k in ("esconder", "caras", "cajas"):
                     if k in d: ESTADO[k] = bool(d[k])
+                if d.get("bloque") in (4, 8, 16, 32, 64): ESTADO["bloque"] = d["bloque"]
                 if d.get("modo") in ("desenfoque", "pixelado"): ESTADO["modo"] = d["modo"]
             self._json({"ok": True})
         elif self.path == "/captura":
