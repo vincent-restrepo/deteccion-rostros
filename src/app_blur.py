@@ -203,8 +203,8 @@ button:hover{border-color:var(--acc)}#err{color:#c0392b;margin-top:8px}
 <select id="color" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit"><option value="negro">Negro</option><option value="blanco">Blanco</option><option value="promedio">Color promedio de la cara</option></select></label></div>
 <div id="rz"><label style="display:block"><small>Intensidad del ruido: <b id="rv">80</b> %. Al 100 % es ruido puro (no queda nada de la cara); con poco ruido la cara se puede recuperar.</small>
 <input type="range" id="ruido" min="10" max="100" step="5" value="80" style="width:100%"></label></div>
-<div id="cl"><label style="display:block"><small>Colores por canal: <b id="nv">3</b> de 10. Con 1 todo queda del mismo gris; con 10 casi no cambia (la cara sigue a la vista).</small>
-<input type="range" id="niveles" min="1" max="10" step="1" value="3" style="width:100%"></label></div>
+<div id="cl"><label style="display:block"><small>Intensidad: <b id="nv">8</b> de 10 (<b id="nc">3</b> colores por canal). Con 10 todo queda del mismo gris; con 1 casi no cambia y la cara sigue a la vista.</small>
+<input type="range" id="niveles" min="1" max="10" step="1" value="8" style="width:100%"></label></div>
 <h2>Detectado ahora</h2>
 <div><span class="num" id="n">0</span> <span>caras</span> · <small id="fps"></small></div>
 <button id="cap">Guardar captura</button><small id="msg"></small>
@@ -213,9 +213,9 @@ button:hover{border-color:var(--acc)}#err{color:#c0392b;margin-top:8px}
 <script>
 const $=id=>document.getElementById(id);
 async function envia(){await fetch('/estado',{method:'POST',body:JSON.stringify({esconder:$('esconder').checked,
-modo:$('modo').value,bloque:+$('bloque').value,fuerza:+$('fuerza').value,color:$('color').value,ruido:+$('ruido').value,niveles:+$('niveles').value})})}
+modo:$('modo').value,bloque:+$('bloque').value,fuerza:+$('fuerza').value,color:$('color').value,ruido:+$('ruido').value,niveles:11-(+$('niveles').value)})})}
 function vista(){const on=$('esconder').checked;$('txtesc').textContent=on?'Sí, esconder':'No, mostrar todo';
-$('como').classList.toggle('apagado',!on);$('modo').disabled=!on;const m=$('modo').value;$('tam').classList.toggle('apagado',m!=='pixelado');$('fz').classList.toggle('apagado',m!=='desenfoque');$('tp').classList.toggle('apagado',m!=='tapado');$('rz').classList.toggle('apagado',m!=='ruido');$('cl').classList.toggle('apagado',m!=='colores');$('nv').textContent=$('niveles').value;$('rv').textContent=$('ruido').value;$('bv').textContent=$('bv2').textContent=$('bloque').value;$('fv').textContent=(+$('fuerza').value).toFixed(1)}
+$('como').classList.toggle('apagado',!on);$('modo').disabled=!on;const m=$('modo').value;$('tam').classList.toggle('apagado',m!=='pixelado');$('fz').classList.toggle('apagado',m!=='desenfoque');$('tp').classList.toggle('apagado',m!=='tapado');$('rz').classList.toggle('apagado',m!=='ruido');$('cl').classList.toggle('apagado',m!=='colores');$('nv').textContent=$('niveles').value;$('nc').textContent=11-(+$('niveles').value);$('rv').textContent=$('ruido').value;$('bv').textContent=$('bv2').textContent=$('bloque').value;$('fv').textContent=(+$('fuerza').value).toFixed(1)}
 ['esconder'].forEach(i=>$(i).onchange=()=>{vista();envia()});vista();envia();['modo','color'].forEach(i=>$(i).onchange=()=>{vista();envia()});['bloque','fuerza','ruido','niveles'].forEach(i=>$(i).oninput=()=>{vista();envia()});
 $('cap').onclick=async()=>{const r=await (await fetch('/captura',{method:'POST'})).json();$('msg').textContent=' '+(r.ruta||r.error)}
 setInterval(async()=>{try{const e=await (await fetch('/estado')).json();$('n').textContent=e.n_caras;$('fps').textContent=e.fps+' cuadros/s · detección '+e.det_ms+' ms';$('err').textContent=e.error}catch(_){}},500);

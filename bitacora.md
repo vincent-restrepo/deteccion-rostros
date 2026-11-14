@@ -56,3 +56,4 @@
 - 2026-11-14 (16:10): Agregada a README, AGENTS.md, brief y D11 la razón de la regla sin YOLO (Vincent): en un curso de visión artificial no hay que saltarse todo para ir a YOLO; se resuelve con las técnicas clásicas.
 - 2026-11-14 (16:20): App: nuevo filtro «Reducción de colores» con slider de 1 a 10 (posterizado por canal, en óvalo; D12). Probado con foto y clics reales; falta cámara. El revisor aún no lo reconoce. README y AGENTS.md actualizados con la lista de filtros.
 - 2026-11-14 (16:30): App encendida con la cámara para probar los cinco filtros, incluido reducción de colores (4 caras, 18,4 cuadros/s, detección 59 ms). Sin decisiones nuevas. Siguiente paso: lo que Vincent observe; detener cuando lo pida.
+- 2026-11-14 (16:40): Slider de reducción de colores invertido a pedido de Vincent: 10 = mayor reducción (todo del mismo gris), 1 = menor; la app envía niveles = 11 − intensidad (D12).
