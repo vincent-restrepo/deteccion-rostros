@@ -12,9 +12,10 @@ Estás ayudando a una persona del equipo en este repositorio. Léelo completo an
 
 1. `README.md`: instalación, comandos, estructura.
 2. `brief.md`: objetivo y reglas del curso.
-3. `borradores/decisiones.md`: D1–D10, las decisiones ya tomadas y su porqué. **No las contradigas; si crees que una está mal, dilo a la persona y propón cambiarla por escrito.**
-4. `borradores/experimentos.md`: E7–E11 con resultados y límites. Aquí están las cifras de referencia.
-5. Las últimas líneas de `bitacora.md`: en qué quedó el trabajo.
+3. `borradores/decisiones.md`: D1–D12, las decisiones ya tomadas y su porqué. **No las contradigas; si crees que una está mal, dilo a la persona y propón cambiarla por escrito.**
+4. `borradores/antecedentes-proyecto-anterior.md`: lo que se hereda del proyecto anterior (E1, E3, E5, E6 y las decisiones vigentes).
+5. `borradores/experimentos.md`: E7–E11 con resultados y límites. Aquí están las cifras de referencia.
+6. Las últimas líneas de `bitacora.md`: en qué quedó el trabajo.
 
 ## 1. El proyecto en cuatro líneas
 
