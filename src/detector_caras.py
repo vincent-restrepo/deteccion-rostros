@@ -43,16 +43,18 @@ def _en_angulo(gris, ang, minimo, vecinos):
     return res
 
 class Detector:
-    def __init__(self, minimo=24, vecinos=3, perfil=True):
-        self.minimo, self.vecinos, self.perfil = minimo, vecinos, perfil
+    def __init__(self, minimo=24, vecinos=3, perfil=True, giros=True, frontal=True):
+        self.minimo, self.vecinos, self.perfil, self.giros, self.frontal = minimo, vecinos, perfil, giros, frontal
         self.n = 0; self.activos = set()
 
     def __call__(self, gris):
         self.n += 1
-        if self.n % BARRIDO == 1: angs = set(TODOS)
+        if not self.giros: angs = {0}
+        elif self.n % BARRIDO == 1: angs = set(TODOS)
         else: angs = {0} | {a + d for a in self.activos for d in (-PASO, 0, PASO) if abs(a + d) <= 60}
         out = []
-        for a in sorted(angs): out += _en_angulo(gris, a, self.minimo, self.vecinos)
+        if self.frontal:
+            for a in sorted(angs): out += _en_angulo(gris, a, self.minimo, self.vecinos)
         if self.perfil:
             for esp in (False, True):
                 img = cv2.flip(gris, 1) if esp else gris

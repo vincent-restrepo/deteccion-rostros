@@ -7,14 +7,19 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import sys
 import cv2
 import numpy as np
+cv2.setNumThreads(3)   # HILOS
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from detector_caras import Detector
+from detector_caras import Detector, _nms
 
 # --- parámetros (privacidad: falso negativo peor que falso positivo, D2) ---
 VENTANA, MIN_VOTOS = 9, 5   # votación: la cara se confirma si aparece en >=5 de los últimos 9 cuadros
 RETENER = 20                # cuadros que se sigue difuminando una cara confirmada tras perderla
 MARGEN = 0.25               # se agranda la caja un 25 % para cubrir frente y mentón
-ANCHO_DET = 1280            # se detecta reduciendo a este ancho como máximo; a 480 se perdían las caras del fondo (E8)
+ANCHO_DET = 960             # frontal y perfil se buscan a este ancho; a 480 se perdían las caras del fondo (E8)
+ANCHO_GIROS = 480           # los giros (lo más caro) se prueban solo a este ancho: las cabezas inclinadas cercanas son grandes
+FPS_MAX = 20                # tope de cuadros por segundo del video mostrado
+HILOS = 3                   # hilos que puede usar OpenCV (para no calentar el equipo)
+INTERVALO = 0.4             # segundos mínimos entre detecciones (≈ 2,5 por segundo): cada una cuesta ≈ 0,3 s de procesador (E8)
 
 ESTADO = {"esconder": True, "caras": True, "cajas": False, "modo": "desenfoque", "bloque": 16,
           "n_caras": 0, "fps": 0.0, "det_ms": 0, "fuente": "", "error": ""}
@@ -79,25 +84,36 @@ def aplicar(img, cajas, modo, bloque=16):
         if modo == "pixelado":
             r2 = pixelar(r, bloque)
         else:
-            k = max(15, ((x1 - x0) // 2) | 1)
-            r2 = cv2.GaussianBlur(r, (k, k), 0); r2 = cv2.GaussianBlur(r2, (k, k), 0)
+            # el desenfoque se hace sobre la región reducida a la cuarta parte (mismo aspecto, mucho menos cálculo)
+            h0, w0 = r.shape[:2]; q = cv2.resize(r, (max(1, w0 // 4), max(1, h0 // 4)), interpolation=cv2.INTER_AREA)
+            k = max(7, ((w0 // 8) | 1))
+            q = cv2.GaussianBlur(cv2.GaussianBlur(q, (k, k), 0), (k, k), 0)
+            r2 = cv2.resize(q, (w0, h0), interpolation=cv2.INTER_LINEAR)
         img[y0:y1, x0:x1] = r2
 
 
 def hilo_deteccion():
     """Detecta en segundo plano con el último cuadro; el video sigue fluido y usa las últimas cajas confirmadas."""
     global CAJAS, DETS
-    detector = Detector(); seg = Seguimiento(); vistos = -1
+    alta = Detector(giros=False, perfil=False); perfil = Detector(giros=False, frontal=False); giros = Detector(perfil=False); seg = Seguimiento(); vistos = -1; vuelta = 0
     while True:
         with LOCK: frame, num = ULTIMO_CRUDO, N_CRUDO
         if frame is None or num == vistos: time.sleep(0.01); continue
-        vistos = num
+        vistos = num; t = time.time(); vuelta += 1
         H, W = frame.shape[:2]; esc = min(1.0, ANCHO_DET / W)
-        gris = cv2.cvtColor(cv2.resize(frame, (int(W * esc), int(H * esc))) if esc < 1 else frame, cv2.COLOR_BGR2GRAY)
-        t = time.time(); crudas = detector(gris)   # sin ecualizar (E3)
-        dets = [tuple(int(v / esc) for v in c) for c in crudas]
+        gris = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        g1 = cv2.resize(gris, (int(W * esc), int(H * esc)), interpolation=cv2.INTER_AREA)
+        items = [(tuple(int(v / esc) for v in c), 0) for c in alta(g1)]      # frontal, sin ecualizar (E3)
+        if vuelta % 2 == 0 or not items:                                       # giros: cada 2 vueltas, a baja resolución
+            e2 = min(1.0, ANCHO_GIROS / W); g2 = cv2.resize(gris, (int(W * e2), int(H * e2)), interpolation=cv2.INTER_AREA)
+            items += [(tuple(int(v / e2) for v in c), 0) for c in giros(g2)]
+        if vuelta % 3 == 0:                                                    # perfil: cada 3 vueltas
+            items += [(tuple(int(v / esc) for v in c), 0) for c in perfil(g1)]
+        dets = [c for c, _ in _nms(items)]
         cajas = [tuple(p.caja) for p in seg.actualizar(dets)]
-        with LOCK: CAJAS, DETS = cajas, dets; ESTADO["det_ms"] = int((time.time() - t) * 1000)
+        dt = time.time() - t
+        with LOCK: CAJAS, DETS = cajas, dets; ESTADO["det_ms"] = int(dt * 1000)
+        time.sleep(max(0.0, INTERVALO - dt))
 
 
 def bucle(fuente):
@@ -110,6 +126,7 @@ def bucle(fuente):
     threading.Thread(target=hilo_deteccion, daemon=True).start()
     t0 = time.time(); n = 0
     while True:
+        t_cuadro = time.time()
         if es_foto: frame = foto.copy(); time.sleep(0.05)
         else:
             ok, frame = cam.read()
@@ -130,6 +147,7 @@ def bucle(fuente):
             ULTIMO_JPG = jpg.tobytes(); ULTIMO_FRAME = salida
             ESTADO["n_caras"] = len(cajas)
             if time.time() - t0 >= 1: ESTADO["fps"] = round(n / (time.time() - t0), 1); n = 0; t0 = time.time()
+        time.sleep(max(0.0, 1.0 / FPS_MAX - (time.time() - t_cuadro)))
 
 
 PAGINA = """<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
