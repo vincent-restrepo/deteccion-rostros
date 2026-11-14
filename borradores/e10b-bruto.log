@@ -1,0 +1,64 @@
+{
+ "metodo": "analisis_pixeles",
+ "parametros": {
+  "PROP_MIN": 0.35,
+  "PROP_MAX": 1.8,
+  "MIN_VALIDOS_PEQ": 6,
+  "MIN_VALIDOS_GRANDE": 1,
+  "CONTRASTE_TAPADO": 20,
+  "RELLENO_BLUR": 0.8,
+  "LADO_BLUR": 40,
+  "TAU": 6,
+  "RELLENO": 0.8,
+  "LADO_MIN": 4,
+  "TOL": 2,
+  "AREA_TAPADO": 1600,
+  "DELTA_BLUR": 1.2
+ },
+ "division": "val",
+ "imagenes": 300,
+ "regiones_reales": 505,
+ "localizadas_IoU0.5": 299,
+ "falsas": 133,
+ "falsas_por_tipo": {
+  "desenfoque": 45,
+  "tapado": 46,
+  "pixelado": 42
+ },
+ "recall_localizacion": 0.592,
+ "precision_localizacion": 0.692,
+ "tipo_correcto_entre_localizadas": 0.89,
+ "recall_con_tipo_correcto": 0.527,
+ "bloque_correcto_en_pixelados_bien_tipados": 0.799,
+ "por_tipo": {
+  "desenfoque": {
+   "reales": 154,
+   "localizadas": 56,
+   "tipo_ok": 38,
+   "recall_loc": 0.364
+  },
+  "pixelado": {
+   "reales": 200,
+   "localizadas": 136,
+   "tipo_ok": 134,
+   "recall_loc": 0.68
+  },
+  "tapado": {
+   "reales": 151,
+   "localizadas": 107,
+   "tipo_ok": 94,
+   "recall_loc": 0.709
+  }
+ },
+ "confusion_real_predicho": {
+  "desenfoque->desenfoque": 38,
+  "desenfoque->tapado": 18,
+  "pixelado->desenfoque": 2,
+  "pixelado->pixelado": 134,
+  "tapado->desenfoque": 13,
+  "tapado->tapado": 94
+ },
+ "imagenes_sin_edicion": 84,
+ "con_alarma": 13,
+ "segundos_por_imagen": 0.05
+}

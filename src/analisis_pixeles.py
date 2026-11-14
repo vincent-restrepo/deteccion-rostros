@@ -18,11 +18,12 @@ TOL = 2            # tolerancia (px) en tamaño y alineación a la cuadrícula
 AREA_TAPADO = 40 * 40
 DELTA_BLUR = 1.2   # caída mínima de nitidez frente al entorno (en log de energía)
 RELLENO_BLUR = 0.8; LADO_BLUR = 40   # desenfoque: relleno mínimo del rectángulo y lado mínimo (px)
+PROP_MIN, PROP_MAX = 0.35, 1.8   # proporción ancho/alto de una región que esconde una cara (en los datos: 0,42–1,4, percentiles 1–99)
 MIN_VALIDOS_PEQ = 6      # pixelado con bloque < 24: mínimo de bloques cuadrados alineados (una región ≥ 48 px tiene muchos)
 MIN_VALIDOS_GRANDE = 1   # bloque ≥ 24: caben pocos bloques en una cara
 CONTRASTE_TAPADO = 20    # diferencia mínima de brillo entre el tapado y sus 6 px de alrededor
 # estos tres umbrales se ajustaron en las primeras 150 imágenes de validación y se comprobaron en otras 150 (E10)
-PARAMS = {"MIN_VALIDOS_PEQ": MIN_VALIDOS_PEQ, "MIN_VALIDOS_GRANDE": MIN_VALIDOS_GRANDE, "CONTRASTE_TAPADO": CONTRASTE_TAPADO, "RELLENO_BLUR": RELLENO_BLUR, "LADO_BLUR": LADO_BLUR, "TAU": TAU, "RELLENO": RELLENO, "LADO_MIN": LADO_MIN, "TOL": TOL, "AREA_TAPADO": AREA_TAPADO, "DELTA_BLUR": DELTA_BLUR}
+PARAMS = {"PROP_MIN": PROP_MIN, "PROP_MAX": PROP_MAX, "MIN_VALIDOS_PEQ": MIN_VALIDOS_PEQ, "MIN_VALIDOS_GRANDE": MIN_VALIDOS_GRANDE, "CONTRASTE_TAPADO": CONTRASTE_TAPADO, "RELLENO_BLUR": RELLENO_BLUR, "LADO_BLUR": LADO_BLUR, "TAU": TAU, "RELLENO": RELLENO, "LADO_MIN": LADO_MIN, "TOL": TOL, "AREA_TAPADO": AREA_TAPADO, "DELTA_BLUR": DELTA_BLUR}
 
 def _bloques_planos(g, tau=None):
     tau = TAU if tau is None else tau
@@ -43,6 +44,16 @@ def _cuadricula(c):
         if abs(w - b) <= TOL and abs(h - b) <= TOL and min(x0 % b, b - x0 % b) <= TOL and min(y0 % b, b - y0 % b) <= TOL: return b
     return None
 
+def _parcial(c, b):
+    """Componente que encaja en la cuadrícula de lado b: origen alineado y lados ≤ b o múltiplos de b."""
+    x0, y0, x1, y1 = c["caja"]
+    lado = lambda l: l <= b + TOL or min(l % b, b - l % b) <= TOL   # recortado (≤ b) o varios bloques del mismo color fundidos (múltiplo de b)
+    return lado(x1 - x0) and lado(y1 - y0) and min(x0 % b, b - x0 % b) <= TOL and min(y0 % b, b - y0 % b) <= TOL
+
+def _prop_ok(r):
+    w, h = r[2] - r[0], r[3] - r[1]
+    return h > 0 and PROP_MIN <= w / h <= PROP_MAX
+
 def _cerca(a, b, d=3):
     return not (a[2] + d < b[0] or b[2] + d < a[0] or a[3] + d < b[1] or b[3] + d < a[1])
 
@@ -54,24 +65,24 @@ def analizar(img):
     visto = set()
     for s in valido:   # grupos de bloques vecinos que parten de un bloque válido
         if s in visto: continue
-        grupo = [s]; visto.add(s); cola = [s]
+        grupo = [s]; visto.add(s); cola = [s]; bg = bl[s]["b"]
         while cola:
             i = cola.pop()
             for j, c in enumerate(bl):
                 if j in visto or not _cerca(bl[i]["caja"], c["caja"]): continue
-                if c["b"] or (min(c["caja"][2] - c["caja"][0], c["caja"][3] - c["caja"][1]) >= LADO_MIN):
+                if c["b"] == bg or _parcial(c, bg):
                     visto.add(j); grupo.append(j); cola.append(j)
         bs = collections.Counter(bl[i]["b"] for i in grupo if bl[i]["b"]); b = bs.most_common(1)[0][0]
         validos_b = sum(1 for i in grupo if bl[i]["b"] == b)
         colores = len({round(bl[i]["color"] / 4) for i in grupo})
-        if len(grupo) >= 2 and colores >= 2 and validos_b >= (MIN_VALIDOS_GRANDE if b >= 24 else MIN_VALIDOS_PEQ):
-            xs = [bl[i]["caja"] for i in grupo]
+        xs = [bl[i]["caja"] for i in grupo]
+        if len(grupo) >= 2 and colores >= 2 and validos_b >= (MIN_VALIDOS_GRANDE if b >= 24 else MIN_VALIDOS_PEQ) and _prop_ok((min(c[0] for c in xs), min(c[1] for c in xs), max(c[2] for c in xs), max(c[3] for c in xs))):
             sal.append({"region": [min(c[0] for c in xs), min(c[1] for c in xs), max(c[2] for c in xs), max(c[3] for c in xs)], "tipo": "pixelado", "bloque": b, "bloques": len(grupo), "validos": validos_b, "colores": colores,
                         "relleno": round(sum((bl[i]["caja"][2]-bl[i]["caja"][0])*(bl[i]["caja"][3]-bl[i]["caja"][1]) for i in grupo) / max(1, (max(c[2] for c in xs)-min(c[0] for c in xs))*(max(c[3] for c in xs)-min(c[1] for c in xs))), 3)})
             usado |= set(grupo)
     for i, c in enumerate(bl):   # tapado: rectángulo plano grande que no forma parte de una cuadrícula
         x0, y0, x1, y1 = c["caja"]
-        if i in usado or (x1 - x0) * (y1 - y0) < AREA_TAPADO: continue
+        if i in usado or (x1 - x0) * (y1 - y0) < AREA_TAPADO or not _prop_ok(c["caja"]): continue
         ring = g[max(0, y0 - 8):y1 + 8, max(0, x0 - 8):x1 + 8].astype(np.float32).copy(); ring[8 if y0 >= 8 else y0:, :] = ring[8 if y0 >= 8 else y0:, :]
         dentro = float(g[y0:y1, x0:x1].mean()); borde = np.concatenate([g[max(0, y0 - 6):y0, x0:x1].ravel(), g[y1:y1 + 6, x0:x1].ravel(), g[y0:y1, max(0, x0 - 6):x0].ravel(), g[y0:y1, x1:x1 + 6].ravel()]).astype(np.float32)
         if borde.size == 0 or abs(dentro - float(borde.mean())) < CONTRASTE_TAPADO or x0 <= 0 or y0 <= 0 or x1 >= W or y1 >= H: continue   # plano que toca el borde de la imagen o sin contraste: fondo, no tapado
@@ -87,7 +98,7 @@ def analizar(img):
     n, lab, st, _ = cv2.connectedComponentsWithStats(mask, connectivity=8)
     for i in range(1, n):
         x, y, w, h, a = st[i]
-        if w < LADO_BLUR or h < LADO_BLUR or a < RELLENO_BLUR * w * h: continue
+        if w < LADO_BLUR or h < LADO_BLUR or a < RELLENO_BLUR * w * h or not _prop_ok((x, y, x + w, y + h)): continue
         sal.append({"region": [int(x), int(y), int(x + w), int(y + h)], "tipo": "desenfoque"})
     return sal
 

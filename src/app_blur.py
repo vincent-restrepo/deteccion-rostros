@@ -13,8 +13,8 @@ from detector_caras import Detector, _nms
 from ediciones import editar
 
 # --- parámetros (privacidad: falso negativo peor que falso positivo, D2) ---
-VENTANA, MIN_VOTOS = 9, 5   # votación: la cara se confirma si aparece en >=5 de los últimos 9 cuadros
-RETENER = 20                # cuadros que se sigue difuminando una cara confirmada tras perderla
+VENTANA, MIN_VOTOS = 4, 1   # en DETECCIONES (≈2,5 por segundo): se esconde desde la primera vez que se ve (falso negativo peor, D2)
+RETENER = 4                 # detecciones (≈1,6 s) que se sigue escondiendo una cara tras perderla
 MARGEN = 0.25               # se agranda la caja un 25 % para cubrir frente y mentón
 ANCHO_DET = 960             # frontal y perfil se buscan a este ancho; a 480 se perdían las caras del fondo (E8)
 ANCHO_GIROS = 480           # los giros (lo más caro) se prueban solo a este ancho: las cabezas inclinadas cercanas son grandes
@@ -22,12 +22,12 @@ FPS_MAX = 20                # tope de cuadros por segundo del video mostrado
 HILOS = 3                   # hilos que puede usar OpenCV (para no calentar el equipo)
 INTERVALO = 0.4             # segundos mínimos entre detecciones (≈ 2,5 por segundo): cada una cuesta ≈ 0,3 s de procesador (E8)
 
-ESTADO = {"esconder": True, "cajas": False, "modo": "desenfoque", "bloque": 16,
+ESTADO = {"esconder": True, "cajas": False, "modo": "desenfoque", "bloque": 16, "forma": "ovalo",
           "n_caras": 0, "fps": 0.0, "det_ms": 0, "fuente": "", "error": ""}
 LOCK = threading.Lock()
 ULTIMO_JPG = None
 ULTIMO_FRAME = None
-ULTIMO_CRUDO = None; N_CRUDO = 0; CAJAS = []; DETS = []
+ULTIMO_CRUDO = None; N_CRUDO = 0; CAJAS = []; DETS = []; VCAJAS = 0
 
 
 class Pista:
@@ -60,19 +60,37 @@ class Seguimiento:
                 p.caja = 0.5 * p.caja + 0.5 * np.array(dets[mejor], float)   # suaviza posición
             if sum(p.votos) >= MIN_VOTOS: p.confirmada = True
         for j, d in enumerate(dets):
-            if j not in usadas: self.pistas.append(Pista(d))
+            if j not in usadas:
+                nueva = Pista(d); nueva.confirmada = sum(nueva.votos) >= MIN_VOTOS; self.pistas.append(nueva)
         self.pistas = [p for p in self.pistas if (p.confirmada and p.sin_ver <= RETENER) or (not p.confirmada and p.sin_ver <= VENTANA)]
         return [p for p in self.pistas if p.confirmada]
 
 
-def aplicar(img, cajas, modo, bloque=16):
-    for caja in cajas:
-        editar(img, caja, modo, MARGEN, bloque)
+def unir(cajas, umbral=0.3):
+    """Cajas que se solapan mucho (dos pistas de la misma cara) se unen en una: así no se esconde dos veces el mismo lugar."""
+    cajas = [list(c) for c in cajas]; cambio = True
+    while cambio:
+        cambio = False
+        for i in range(len(cajas)):
+            for j in range(i + 1, len(cajas)):
+                a, b = cajas[i], cajas[j]
+                ix = max(0, min(a[0] + a[2], b[0] + b[2]) - max(a[0], b[0])); iy = max(0, min(a[1] + a[3], b[1] + b[3]) - max(a[1], b[1]))
+                inter = ix * iy
+                if inter and inter / min(a[2] * a[3], b[2] * b[3]) >= umbral + 0.2:
+                    x0, y0 = min(a[0], b[0]), min(a[1], b[1]); x1, y1 = max(a[0] + a[2], b[0] + b[2]), max(a[1] + a[3], b[1] + b[3])
+                    cajas[i] = [x0, y0, x1 - x0, y1 - y0]; del cajas[j]; cambio = True; break
+            if cambio: break
+    return [tuple(c) for c in cajas]
+
+
+def aplicar(img, cajas, modo, bloque=16, forma="ovalo"):
+    for caja in unir(cajas):
+        editar(img, caja, modo, MARGEN, bloque, forma=forma)
 
 
 def hilo_deteccion():
     """Detecta en segundo plano con el último cuadro; el video sigue fluido y usa las últimas cajas confirmadas."""
-    global CAJAS, DETS
+    global CAJAS, DETS, VCAJAS
     alta = Detector(giros=False, perfil=False); perfil = Detector(giros=False, frontal=False); giros = Detector(perfil=False); seg = Seguimiento(); vistos = -1; vuelta = 0
     while True:
         with LOCK: frame, num = ULTIMO_CRUDO, N_CRUDO
@@ -90,8 +108,23 @@ def hilo_deteccion():
         dets = [c for c, _ in _nms(items)]
         cajas = [tuple(p.caja) for p in seg.actualizar(dets)]
         dt = time.time() - t
-        with LOCK: CAJAS, DETS = cajas, dets; ESTADO["det_ms"] = int(dt * 1000)
+        with LOCK: CAJAS, DETS = cajas, dets; VCAJAS += 1; ESTADO["det_ms"] = int(dt * 1000)
         time.sleep(max(0.0, INTERVALO - dt))
+
+
+def mover(prev, cur, cajas, esc):
+    """Entre detecciones, las cajas siguen a la cara con flujo óptico (Lucas-Kanade) sobre 16 puntos de cada caja."""
+    out = []
+    for (x, y, w, h) in cajas:
+        xs = np.linspace(x + w * 0.2, x + w * 0.8, 4); ys = np.linspace(y + h * 0.2, y + h * 0.8, 4)
+        p0 = np.array([[a * esc, b * esc] for b in ys for a in xs], np.float32).reshape(-1, 1, 2)
+        p1, st, _ = cv2.calcOpticalFlowPyrLK(prev, cur, p0, None, winSize=(15, 15), maxLevel=2)
+        ok = st.ravel() == 1
+        if ok.sum() >= 4:
+            d = np.median((p1 - p0)[ok].reshape(-1, 2), axis=0) / esc
+            if abs(d[0]) < w and abs(d[1]) < h: x, y = x + d[0], y + d[1]
+        out.append((x, y, w, h))
+    return out
 
 
 def bucle(fuente):
@@ -102,7 +135,7 @@ def bucle(fuente):
     if not es_foto and not cam.isOpened():
         ESTADO["error"] = "No se pudo abrir la fuente de video (¿permiso de cámara?)"; return
     threading.Thread(target=hilo_deteccion, daemon=True).start()
-    t0 = time.time(); n = 0
+    t0 = time.time(); n = 0; prev = None; vivas = []; ver = -1
     while True:
         t_cuadro = time.time()
         if es_foto: frame = foto.copy(); time.sleep(0.05)
@@ -113,9 +146,13 @@ def bucle(fuente):
                 time.sleep(0.05); continue
         if fuente == 0: frame = cv2.flip(frame, 1)   # efecto espejo de la cámara
         with LOCK:
-            ULTIMO_CRUDO = frame; N_CRUDO += 1; e = dict(ESTADO); cajas, dets = list(CAJAS), list(DETS)
+            ULTIMO_CRUDO = frame; N_CRUDO += 1; e = dict(ESTADO); cajas, dets, v = list(CAJAS), list(DETS), VCAJAS
+        pq = 480 / frame.shape[1]; cur = cv2.cvtColor(cv2.resize(frame, (480, int(frame.shape[0] * pq))), cv2.COLOR_BGR2GRAY)
+        if v != ver or prev is None: vivas, ver = cajas, v   # detección nueva: se parte de sus cajas
+        else: vivas = mover(prev, cur, vivas, pq)           # si no, las cajas siguen a la cara
+        prev = cur; cajas = vivas
         salida = frame.copy()
-        if e["esconder"]: aplicar(salida, cajas, e["modo"], e["bloque"])
+        if e["esconder"]: aplicar(salida, cajas, e["modo"], e["bloque"], e["forma"])
         if e["cajas"]:
             for d in dets: cv2.rectangle(salida, (d[0], d[1]), (d[0] + d[2], d[1] + d[3]), (0, 200, 255), 2)
             for c in cajas: cv2.rectangle(salida, (int(c[0]), int(c[1])), (int(c[0] + c[2]), int(c[1] + c[3])), (0, 255, 0), 2)
@@ -160,6 +197,8 @@ button:hover{border-color:var(--acc)}#err{color:#c0392b;margin-top:8px}
 <h2>Cómo esconder</h2>
 <label><input type="radio" name="modo" value="desenfoque" checked> Desenfoque</label>
 <label><input type="radio" name="modo" value="pixelado"> Pixelado</label>
+<div id="forma"><small>Forma de la zona escondida</small>
+<div class="chips"><label><input type="radio" name="forma" value="ovalo" checked>Óvalo</label><label><input type="radio" name="forma" value="rect">Rectángulo</label></div></div>
 <div id="tam"><small>Tamaño del bloque (píxeles de la imagen): cada bloque N×N se pinta con su color promedio</small>
 <div class="chips"><label><input type="radio" name="bloque" value="4">4×4</label><label><input type="radio" name="bloque" value="8">8×8</label><label><input type="radio" name="bloque" value="16" checked>16×16</label><label><input type="radio" name="bloque" value="32">32×32</label><label><input type="radio" name="bloque" value="64">64×64</label></div></div>
 </div>
@@ -173,10 +212,10 @@ button:hover{border-color:var(--acc)}#err{color:#c0392b;margin-top:8px}
 <script>
 const $=id=>document.getElementById(id);
 async function envia(){await fetch('/estado',{method:'POST',body:JSON.stringify({esconder:$('esconder').checked,cajas:$('cajas').checked,
-modo:document.querySelector('input[name=modo]:checked').value,bloque:+document.querySelector('input[name=bloque]:checked').value})})}
+modo:document.querySelector('input[name=modo]:checked').value,bloque:+document.querySelector('input[name=bloque]:checked').value,forma:document.querySelector('input[name=forma]:checked').value})})}
 function vista(){const on=$('esconder').checked;$('txtesc').textContent=on?'Sí, esconder':'No, mostrar todo';
 $('como').classList.toggle('apagado',!on);document.querySelectorAll('input[name=modo]').forEach(r=>r.disabled=!on);$('tam').classList.toggle('apagado',document.querySelector('input[name=modo]:checked').value!=='pixelado')}
-['esconder','cajas'].forEach(i=>$(i).onchange=()=>{vista();envia()});vista();document.querySelectorAll('input[name=modo],input[name=bloque]').forEach(r=>r.onchange=()=>{vista();envia()});
+['esconder','cajas'].forEach(i=>$(i).onchange=()=>{vista();envia()});vista();document.querySelectorAll('input[name=modo],input[name=bloque],input[name=forma]').forEach(r=>r.onchange=()=>{vista();envia()});
 $('cap').onclick=async()=>{const r=await (await fetch('/captura',{method:'POST'})).json();$('msg').textContent=' '+(r.ruta||r.error)}
 setInterval(async()=>{try{const e=await (await fetch('/estado')).json();$('n').textContent=e.n_caras;$('fps').textContent=e.fps+' cuadros/s · detección '+e.det_ms+' ms';$('err').textContent=e.error}catch(_){}},500);
 </script></body></html>"""
@@ -214,6 +253,7 @@ class H(BaseHTTPRequestHandler):
                 for k in ("esconder", "cajas"):
                     if k in d: ESTADO[k] = bool(d[k])
                 if d.get("bloque") in (4, 8, 16, 32, 64): ESTADO["bloque"] = d["bloque"]
+                if d.get("forma") in ("ovalo", "rect"): ESTADO["forma"] = d["forma"]
                 if d.get("modo") in ("desenfoque", "pixelado"): ESTADO["modo"] = d["modo"]
             self._json({"ok": True})
         elif self.path == "/captura":

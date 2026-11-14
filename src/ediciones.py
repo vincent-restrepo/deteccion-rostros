@@ -26,13 +26,19 @@ def region(forma, caja, margen, bloque=None):
     if bloque: x0, y0 = x0 // bloque * bloque, y0 // bloque * bloque
     return x0, y0, x1, y1
 
-def editar(img, caja, tipo, margen=0.25, bloque=16, fuerza=1.0, color=(0, 0, 0)):
+def editar(img, caja, tipo, margen=0.25, bloque=16, fuerza=1.0, color=(0, 0, 0), forma="rect"):
+    """forma = "rect" (toda la región) u "ovalo" (la elipse inscrita en la región: sigue mejor la forma de una cara).
+    Devuelve siempre el rectángulo que contiene la edición."""
     b = bloque if tipo == "pixelado" else None
     x0, y0, x1, y1 = region(img.shape, caja, margen, b)
     r = img[y0:y1, x0:x1]
     if r.size == 0: return None
-    if tipo == "pixelado": img[y0:y1, x0:x1] = pixelar(r, bloque)
-    elif tipo == "desenfoque": img[y0:y1, x0:x1] = desenfocar(r, fuerza)
-    elif tipo == "tapado": img[y0:y1, x0:x1] = np.array(color, dtype=img.dtype)
+    if tipo == "pixelado": r2 = pixelar(r, bloque)
+    elif tipo == "desenfoque": r2 = desenfocar(r, fuerza)
+    elif tipo == "tapado": r2 = np.empty_like(r); r2[:] = np.array(color, dtype=img.dtype)
     else: raise ValueError(tipo)
+    if forma == "ovalo":
+        h, w = r.shape[:2]; m = np.zeros((h, w), np.uint8); cv2.ellipse(m, (w // 2, h // 2), (max(1, w // 2), max(1, h // 2)), 0, 0, 360, 255, -1)
+        r2 = np.where(m[..., None] > 0, r2, r)
+    img[y0:y1, x0:x1] = r2
     return x0, y0, x1, y1
