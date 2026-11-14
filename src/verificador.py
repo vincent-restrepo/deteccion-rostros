@@ -106,5 +106,6 @@ def evaluar(n_train):
 
 if __name__ == "__main__":
     c = sys.argv[1]
+    from rutas import exigir; exigir("datos/division_wider.csv", "Primero: python src/dividir_wider.py (ver README.md).")
     if c == "extraer": extraer(sys.argv[2], int(sys.argv[3]), int(sys.argv[4]) if len(sys.argv) > 4 else 1)
     elif c == "evaluar": evaluar(int(sys.argv[2]) if len(sys.argv) > 2 else 10**9)

@@ -41,6 +41,7 @@ def dlib_hog(sube):
 
 if __name__ == "__main__":
     n = int(sys.argv[1]) if len(sys.argv) > 1 else 120; sem = int(sys.argv[2]) if len(sys.argv) > 2 else 0
+    from rutas import exigir; exigir(RAIZ, "Descarga WIDER: ver README.md, sección «Datos».")
     imgs = sorted(glob.glob(f"{RAIZ}/images/*.jpg")); random.Random(sem).shuffle(imgs)
     bins = [(0, 24), (24, 48), (48, 96), (96, 10**6)]
     res = {}

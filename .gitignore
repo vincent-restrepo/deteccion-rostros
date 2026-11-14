@@ -20,3 +20,6 @@ salidas_demo/
 
 # Candidatas de E11 (se regeneran con src/verificador.py)
 datos/*.pkl
+
+# Herramienta local de pruebas de interfaz
+.playwright-cli/
