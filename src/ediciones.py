@@ -1,5 +1,5 @@
 """Ediciones que esconden una cara. Una sola fuente de verdad: las usan la app (parte A) y el generador de imágenes
-alteradas (parte B). Tipos de la parte B (el revisor los conoce): "desenfoque", "pixelado", "tapado". Además la app ofrece "ruido" (el revisor aún no lo reconoce). Cada función edita la imagen en el lugar y devuelve la región
+alteradas (parte B). Tipos de la parte B (el revisor los conoce): "desenfoque", "pixelado", "tapado". Además la app ofrece "ruido" y "colores" (reducción de colores); el revisor aún no los reconoce. Cada función edita la imagen en el lugar y devuelve la región
 realmente modificada (x0, y0, x1, y1)."""
 import cv2, numpy as np
 
@@ -26,7 +26,7 @@ def region(forma, caja, margen, bloque=None):
     if bloque: x0, y0 = x0 // bloque * bloque, y0 // bloque * bloque
     return x0, y0, x1, y1
 
-def editar(img, caja, tipo, margen=0.25, bloque=16, fuerza=1.0, color=(0, 0, 0), forma="rect", ruido=80):
+def editar(img, caja, tipo, margen=0.25, bloque=16, fuerza=1.0, color=(0, 0, 0), forma="rect", ruido=80, niveles=3):
     """forma = "rect" (toda la región) u "ovalo" (la elipse inscrita en la región: sigue mejor la forma de una cara).
     Devuelve siempre el rectángulo que contiene la edición."""
     b = bloque if tipo == "pixelado" else None
@@ -41,6 +41,10 @@ def editar(img, caja, tipo, margen=0.25, bloque=16, fuerza=1.0, color=(0, 0, 0),
     elif tipo == "ruido":   # mezcla la región con ruido uniforme: (1 − a)·imagen + a·ruido, a = ruido / 100; al 100 % es ruido puro y no queda nada de la cara
         a = max(0.0, min(1.0, ruido / 100.0)); u = np.random.default_rng().uniform(0, 255, r.shape)
         r2 = np.clip((1 - a) * r.astype(np.float32) + a * u, 0, 255).astype(img.dtype)
+    elif tipo == "colores":   # reducción de colores: cada canal se cuantiza a `niveles` valores (1–10). Con 1 todo queda del mismo gris; con 10 apenas cambia
+        n = max(1, int(niveles))
+        if n == 1: r2 = np.full_like(r, 128)
+        else: paso = 255.0 / (n - 1); r2 = (np.round(r.astype(np.float32) / paso) * paso).astype(img.dtype)
     else: raise ValueError(tipo)
     if forma == "ovalo":
         h, w = r.shape[:2]; m = np.zeros((h, w), np.uint8); cv2.ellipse(m, (w // 2, h // 2), (max(1, w // 2), max(1, h // 2)), 0, 0, 360, 255, -1)

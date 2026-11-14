@@ -22,7 +22,7 @@ FPS_MAX = 20                # tope de cuadros por segundo del video mostrado
 HILOS = 3                   # hilos que puede usar OpenCV (para no calentar el equipo)
 INTERVALO = 0.4             # segundos mínimos entre detecciones (≈ 2,5 por segundo): cada una cuesta ≈ 0,3 s de procesador (E8)
 
-ESTADO = {"esconder": True, "modo": "desenfoque", "bloque": 16, "fuerza": 1.0, "color": "negro", "ruido": 80,
+ESTADO = {"esconder": True, "modo": "desenfoque", "bloque": 16, "fuerza": 1.0, "color": "negro", "ruido": 80, "niveles": 3,
           "n_caras": 0, "fps": 0.0, "det_ms": 0, "fuente": "", "error": ""}
 LOCK = threading.Lock()
 ULTIMO_JPG = None
@@ -83,10 +83,10 @@ def unir(cajas, umbral=0.3):
     return [tuple(c) for c in cajas]
 
 
-def aplicar(img, cajas, modo, bloque=16, fuerza=1.0, color="negro", ruido=80):
+def aplicar(img, cajas, modo, bloque=16, fuerza=1.0, color="negro", ruido=80, niveles=3):
     forma = "rect" if modo == "pixelado" else "ovalo"   # D7/D10: desenfoque, tapado y ruido van en óvalo; el pixelado, en rectángulo (sus bloques son cuadros)
     for caja in unir(cajas):
-        editar(img, caja, modo, MARGEN, bloque, fuerza, color, forma, ruido)
+        editar(img, caja, modo, MARGEN, bloque, fuerza, color, forma, ruido, niveles)
 
 
 def hilo_deteccion():
@@ -153,7 +153,7 @@ def bucle(fuente):
         else: vivas = mover(prev, cur, vivas, pq)           # si no, las cajas siguen a la cara
         prev = cur; cajas = vivas
         salida = frame.copy()
-        if e["esconder"]: aplicar(salida, cajas, e["modo"], e["bloque"], e["fuerza"], e["color"], e["ruido"])
+        if e["esconder"]: aplicar(salida, cajas, e["modo"], e["bloque"], e["fuerza"], e["color"], e["ruido"], e["niveles"])
         ok, jpg = cv2.imencode(".jpg", salida, [cv2.IMWRITE_JPEG_QUALITY, 80])
         n += 1
         with LOCK:
@@ -182,7 +182,7 @@ label{display:flex;gap:10px;align-items:center;padding:8px 0;cursor:pointer}inpu
 .pista::after{content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:left .15s}
 .sw input:checked+.pista{background:var(--acc)}.sw input:checked+.pista::after{left:23px}
 .sw input:focus-visible+.pista{outline:2px solid var(--acc);outline-offset:2px}
-.chips{display:flex;flex-wrap:wrap;gap:4px 12px}.chips label{padding:4px 0}#tam.apagado,#fz.apagado,#tp.apagado,#rz.apagado{display:none}#como.apagado{opacity:.4;pointer-events:none}small{color:var(--mut)}
+.chips{display:flex;flex-wrap:wrap;gap:4px 12px}.chips label{padding:4px 0}#tam.apagado,#fz.apagado,#tp.apagado,#rz.apagado,#cl.apagado{display:none}#como.apagado{opacity:.4;pointer-events:none}small{color:var(--mut)}
 .num{font-size:34px;font-weight:600}button{width:100%;padding:10px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit;cursor:pointer;margin-top:8px}
 button:hover{border-color:var(--acc)}#err{color:#c0392b;margin-top:8px}
 </style></head><body><main>
@@ -194,7 +194,7 @@ button:hover{border-color:var(--acc)}#err{color:#c0392b;margin-top:8px}
 <div id="como">
 <h2>Cómo esconder</h2>
 <select id="modo" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit;margin-bottom:6px">
-<option value="desenfoque">Desenfoque (óvalo)</option><option value="pixelado">Pixelado (rectángulo)</option><option value="tapado">Tapado sólido (óvalo)</option><option value="ruido">Ruido (óvalo)</option></select>
+<option value="desenfoque">Desenfoque (óvalo)</option><option value="pixelado">Pixelado (rectángulo)</option><option value="tapado">Tapado sólido (óvalo)</option><option value="ruido">Ruido (óvalo)</option><option value="colores">Reducción de colores (óvalo)</option></select>
 <div id="tam"><label style="display:block"><small>Tamaño del bloque: <b id="bv">16</b> × <b id="bv2">16</b> píxeles de la imagen. Cada bloque se pinta con su color promedio.</small>
 <input type="range" id="bloque" min="4" max="64" step="1" value="16" style="width:100%"></label></div>
 <div id="fz"><label style="display:block"><small>Intensidad del desenfoque: <b id="fv">1.0</b> (kernel gaussiano relativo al tamaño de la cara)</small>
@@ -203,6 +203,8 @@ button:hover{border-color:var(--acc)}#err{color:#c0392b;margin-top:8px}
 <select id="color" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit"><option value="negro">Negro</option><option value="blanco">Blanco</option><option value="promedio">Color promedio de la cara</option></select></label></div>
 <div id="rz"><label style="display:block"><small>Intensidad del ruido: <b id="rv">80</b> %. Al 100 % es ruido puro (no queda nada de la cara); con poco ruido la cara se puede recuperar.</small>
 <input type="range" id="ruido" min="10" max="100" step="5" value="80" style="width:100%"></label></div>
+<div id="cl"><label style="display:block"><small>Colores por canal: <b id="nv">3</b> de 10. Con 1 todo queda del mismo gris; con 10 casi no cambia (la cara sigue a la vista).</small>
+<input type="range" id="niveles" min="1" max="10" step="1" value="3" style="width:100%"></label></div>
 <h2>Detectado ahora</h2>
 <div><span class="num" id="n">0</span> <span>caras</span> · <small id="fps"></small></div>
 <button id="cap">Guardar captura</button><small id="msg"></small>
@@ -211,10 +213,10 @@ button:hover{border-color:var(--acc)}#err{color:#c0392b;margin-top:8px}
 <script>
 const $=id=>document.getElementById(id);
 async function envia(){await fetch('/estado',{method:'POST',body:JSON.stringify({esconder:$('esconder').checked,
-modo:$('modo').value,bloque:+$('bloque').value,fuerza:+$('fuerza').value,color:$('color').value,ruido:+$('ruido').value})})}
+modo:$('modo').value,bloque:+$('bloque').value,fuerza:+$('fuerza').value,color:$('color').value,ruido:+$('ruido').value,niveles:+$('niveles').value})})}
 function vista(){const on=$('esconder').checked;$('txtesc').textContent=on?'Sí, esconder':'No, mostrar todo';
-$('como').classList.toggle('apagado',!on);$('modo').disabled=!on;const m=$('modo').value;$('tam').classList.toggle('apagado',m!=='pixelado');$('fz').classList.toggle('apagado',m!=='desenfoque');$('tp').classList.toggle('apagado',m!=='tapado');$('rz').classList.toggle('apagado',m!=='ruido');$('rv').textContent=$('ruido').value;$('bv').textContent=$('bv2').textContent=$('bloque').value;$('fv').textContent=(+$('fuerza').value).toFixed(1)}
-['esconder'].forEach(i=>$(i).onchange=()=>{vista();envia()});vista();envia();['modo','color'].forEach(i=>$(i).onchange=()=>{vista();envia()});['bloque','fuerza','ruido'].forEach(i=>$(i).oninput=()=>{vista();envia()});
+$('como').classList.toggle('apagado',!on);$('modo').disabled=!on;const m=$('modo').value;$('tam').classList.toggle('apagado',m!=='pixelado');$('fz').classList.toggle('apagado',m!=='desenfoque');$('tp').classList.toggle('apagado',m!=='tapado');$('rz').classList.toggle('apagado',m!=='ruido');$('cl').classList.toggle('apagado',m!=='colores');$('nv').textContent=$('niveles').value;$('rv').textContent=$('ruido').value;$('bv').textContent=$('bv2').textContent=$('bloque').value;$('fv').textContent=(+$('fuerza').value).toFixed(1)}
+['esconder'].forEach(i=>$(i).onchange=()=>{vista();envia()});vista();envia();['modo','color'].forEach(i=>$(i).onchange=()=>{vista();envia()});['bloque','fuerza','ruido','niveles'].forEach(i=>$(i).oninput=()=>{vista();envia()});
 $('cap').onclick=async()=>{const r=await (await fetch('/captura',{method:'POST'})).json();$('msg').textContent=' '+(r.ruta||r.error)}
 setInterval(async()=>{try{const e=await (await fetch('/estado')).json();$('n').textContent=e.n_caras;$('fps').textContent=e.fps+' cuadros/s · detección '+e.det_ms+' ms';$('err').textContent=e.error}catch(_){}},500);
 </script></body></html>"""
@@ -253,7 +255,8 @@ class H(BaseHTTPRequestHandler):
                     if k in d: ESTADO[k] = bool(d[k])
                 if isinstance(d.get("bloque"), int) and 4 <= d["bloque"] <= 64: ESTADO["bloque"] = d["bloque"]
                 if isinstance(d.get("fuerza"), (int, float)) and 0.2 <= d["fuerza"] <= 3.0: ESTADO["fuerza"] = float(d["fuerza"])
-                if d.get("modo") in ("desenfoque", "pixelado", "tapado", "ruido"): ESTADO["modo"] = d["modo"]
+                if d.get("modo") in ("desenfoque", "pixelado", "tapado", "ruido", "colores"): ESTADO["modo"] = d["modo"]
+                if isinstance(d.get("niveles"), int) and 1 <= d["niveles"] <= 10: ESTADO["niveles"] = d["niveles"]
                 if d.get("color") in ("negro", "blanco", "promedio"): ESTADO["color"] = d["color"]
                 if isinstance(d.get("ruido"), (int, float)) and 10 <= d["ruido"] <= 100: ESTADO["ruido"] = float(d["ruido"])
             self._json({"ok": True})
