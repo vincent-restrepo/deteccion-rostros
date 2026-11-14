@@ -32,3 +32,9 @@ Vincent: el pixelado y el desenfoque deben tener cada uno un slider para mover l
 
 ## D9 · 2026-11-14 · Menú desplegable de filtros: desenfoque, pixelado, tapado sólido y ruido
 Vincent pidió agregar ruido y tapado sólido y cambiar los botones de modo por un menú desplegable porque ya son varios. La app ofrece: Desenfoque (óvalo, slider de intensidad), Pixelado (slider de bloque 4–64), Tapado sólido (color negro, blanco o promedio de la cara) y Ruido (gaussiano, desviación 10–150; con poco ruido la cara se puede recuperar). Cada modo muestra solo sus controles. El tapado ya lo conocía el revisor (parte B); el ruido todavía no: queda pendiente agregarlo al generador de datos y medirlo (el revisor sin entrenar buscaría una varianza alta y sin estructura).
+
+## D10 · 2026-11-14 · Tapado y ruido en óvalo; el ruido pasa a ser una mezcla; se quita «Mostrar cajas»
+- Vincent: el tapado sólido y el ruido deben ir en óvalo como el desenfoque (el pixelado sigue en rectángulo, porque sus bloques son cuadros). Actualiza D7.
+- El ruido gaussiano de σ hasta 150 dejaba ver mucho de la cara. Ahora el ruido mezcla la región con ruido uniforme: (1 − a)·imagen + a·ruido, con a = intensidad / 100 (slider 10–100 %). Al 100 % es ruido puro: la correlación con la cara original medida es 0,01 (al 80 %: 0,07).
+- Se elimina «Mostrar cajas» (casilla, dibujo y estado del servidor): aportaba poco, según Vincent.
+- Consecuencia para la parte B: los tapados ovalados ya no son rectángulos planos completos (relleno 0,785, y la regla de E10 exige 0,8); hay que ajustar la regla y medirla con óvalos (pendiente, junto con el ruido).
