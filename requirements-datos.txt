@@ -1,0 +1,1 @@
+kaggle==1.7.4.5   # solo para descargar los datasets; hace falta una cuenta de Kaggle (ver README.md)

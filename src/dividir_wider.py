@@ -20,6 +20,7 @@ def popcount(x):
     return t
 
 if __name__ == "__main__":
+    from rutas import exigir; exigir(RAIZ, "Descarga WIDER: ver README.md, sección «Datos».")
     rutas = sorted(glob.glob(f"{RAIZ}/*.jpg")); hs = []; ok = []
     for r in rutas:
         h = dhash(r)

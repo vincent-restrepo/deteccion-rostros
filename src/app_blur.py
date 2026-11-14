@@ -131,7 +131,7 @@ def mover(prev, cur, cajas, esc):
 def bucle(fuente):
     global ULTIMO_JPG, ULTIMO_FRAME, ULTIMO_CRUDO, N_CRUDO
     es_foto = isinstance(fuente, str) and fuente.lower().endswith((".jpg", ".jpeg", ".png"))
-    cam = None if es_foto else cv2.VideoCapture(fuente, cv2.CAP_AVFOUNDATION) if fuente == 0 else cv2.VideoCapture(fuente)
+    cam = None if es_foto else cv2.VideoCapture(fuente, cv2.CAP_AVFOUNDATION if sys.platform == "darwin" else cv2.CAP_ANY) if fuente == 0 else cv2.VideoCapture(fuente)
     foto = cv2.imread(fuente) if es_foto else None
     if not es_foto and not cam.isOpened():
         ESTADO["error"] = "No se pudo abrir la fuente de video (¿permiso de cámara?)"; return
