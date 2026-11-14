@@ -12,6 +12,8 @@ Antes de tocar nada, lee `brief.md` (objetivo y reglas) y `borradores/decisiones
 > ## Regla del curso: NO se puede usar YOLO (ni ninguna red neuronal)
 > El profesor fijó que el proyecto es **solo visión clásica: todo menos deep learning**. Eso incluye **YOLO** (en cualquier versión), SSD, las redes de OpenCV (`cv2.dnn`, res10), YuNet, MediaPipe, MTCNN, dlib CNN y los embeddings tipo FaceNet, **aunque vengan preentrenados**. No instales `ultralytics`, `torch`, `tensorflow` ni `keras`.
 >
+> **Por qué:** esto es un curso de visión artificial. Saltar directo a YOLO se salta justo lo que se viene a aprender: cómo se detecta, se filtra y se analiza una imagen con las técnicas clásicas (convoluciones, gradientes, HOG, Haar, SVM, geometría). La idea es resolverlo con esas técnicas, entenderlas y poder defender cada paso.
+>
 > **Ojo con el nombre de un dataset:** `lylmsc/wider-face-for-yolo-training` (carpeta `entradas/wider-yolo`) dice «yolo» solo porque sus etiquetas están escritas en el *formato* que usa YOLO (un archivo de texto por imagen con `clase cx cy ancho alto`). **No usamos el modelo YOLO**: solo leemos esas cajas como texto.
 
 ## 1. Instalación
