@@ -15,6 +15,8 @@ Código, informe y demo (cámara del Mac). Formato exacto: pendiente.
 Pendiente (aprox. fin de noviembre de 2026; confirmar con el profesor).
 
 ## Reglas del curso
+**NO se puede usar YOLO ni ninguna red neuronal** (aunque venga preentrenada). El dataset `wider-face-for-yolo-training` solo trae las cajas escritas en formato YOLO (texto); el modelo YOLO no se usa.
+
 Todo menos deep learning. Entran HOG+SVM (incluido el detector de dlib), Haar, LBP, k-NN, árboles, bosques, boosting, geometría, Fourier. Quedan fuera aunque vengan preentrenados: YOLO, SSD, DNN de OpenCV, YuNet, MediaPipe, MTCNN, detector CNN de dlib, embeddings tipo FaceNet. Si se usa un modelo preentrenado clásico (HOG de dlib), el informe declara de dónde viene. Pendiente confirmar con el profesor si cuenta como «propio».
 
 ## Principios

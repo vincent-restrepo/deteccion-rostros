@@ -2,6 +2,11 @@
 
 Estás ayudando a una persona del equipo en este repositorio. Léelo completo antes de actuar. Hablas con personas que hacen un **proyecto final de Visión por Computador**; el profesor evalúa sobre todo **cómo se trataron los datos**, así que cada decisión tiene que quedar escrita y defendible.
 
+> # ⛔ REGLA Nº 1: NO se puede usar YOLO ni ninguna red neuronal
+> El profesor fijó que el proyecto es **solo visión clásica: todo menos deep learning**. **Prohibido, aunque venga preentrenado:** YOLO (cualquier versión), SSD, `cv2.dnn` / res10, YuNet, MediaPipe/BlazeFace, MTCNN, dlib CNN, FaceNet y cualquier otra red neuronal. No instales ni importes `ultralytics`, `torch`, `tensorflow`, `keras`, `onnx`. No uses los scripts de redes que traen algunos datasets.
+> Si la persona te pide algo que lo requiera, **no lo hagas**: explícale que el curso lo prohíbe y propón la alternativa clásica (Haar, HOG+SVM, LBP, cascadas propias, k-NN, bosques, boosting).
+> **Trampa del nombre:** el dataset `wider-face-for-yolo-training` solo trae sus etiquetas en *formato* YOLO (texto: `clase cx cy ancho alto`). Eso es un formato de archivo, no el modelo. Se lee como texto y no se usa YOLO.
+
 ## 0. Qué leer primero (en este orden)
 
 1. `README.md`: instalación, comandos, estructura.
