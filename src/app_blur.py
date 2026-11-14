@@ -22,12 +22,12 @@ FPS_MAX = 20                # tope de cuadros por segundo del video mostrado
 HILOS = 3                   # hilos que puede usar OpenCV (para no calentar el equipo)
 INTERVALO = 0.4             # segundos mínimos entre detecciones (≈ 2,5 por segundo): cada una cuesta ≈ 0,3 s de procesador (E8)
 
-ESTADO = {"esconder": True, "cajas": False, "modo": "desenfoque", "bloque": 16, "fuerza": 1.0, "color": "negro", "ruido": 60,
+ESTADO = {"esconder": True, "modo": "desenfoque", "bloque": 16, "fuerza": 1.0, "color": "negro", "ruido": 80,
           "n_caras": 0, "fps": 0.0, "det_ms": 0, "fuente": "", "error": ""}
 LOCK = threading.Lock()
 ULTIMO_JPG = None
 ULTIMO_FRAME = None
-ULTIMO_CRUDO = None; N_CRUDO = 0; CAJAS = []; DETS = []; VCAJAS = 0
+ULTIMO_CRUDO = None; N_CRUDO = 0; CAJAS = []; VCAJAS = 0
 
 
 class Pista:
@@ -83,15 +83,15 @@ def unir(cajas, umbral=0.3):
     return [tuple(c) for c in cajas]
 
 
-def aplicar(img, cajas, modo, bloque=16, fuerza=1.0, color="negro", ruido=60):
-    forma = "ovalo" if modo == "desenfoque" else "rect"   # D7: el óvalo es solo para el desenfoque; el pixelado va en rectángulo
+def aplicar(img, cajas, modo, bloque=16, fuerza=1.0, color="negro", ruido=80):
+    forma = "rect" if modo == "pixelado" else "ovalo"   # D7/D10: desenfoque, tapado y ruido van en óvalo; el pixelado, en rectángulo (sus bloques son cuadros)
     for caja in unir(cajas):
         editar(img, caja, modo, MARGEN, bloque, fuerza, color, forma, ruido)
 
 
 def hilo_deteccion():
     """Detecta en segundo plano con el último cuadro; el video sigue fluido y usa las últimas cajas confirmadas."""
-    global CAJAS, DETS, VCAJAS
+    global CAJAS, VCAJAS
     alta = Detector(giros=False, perfil=False); perfil = Detector(giros=False, frontal=False); giros = Detector(perfil=False); seg = Seguimiento(); vistos = -1; vuelta = 0
     while True:
         with LOCK: frame, num = ULTIMO_CRUDO, N_CRUDO
@@ -109,7 +109,7 @@ def hilo_deteccion():
         dets = [c for c, _ in _nms(items)]
         cajas = [tuple(p.caja) for p in seg.actualizar(dets)]
         dt = time.time() - t
-        with LOCK: CAJAS, DETS = cajas, dets; VCAJAS += 1; ESTADO["det_ms"] = int(dt * 1000)
+        with LOCK: CAJAS = cajas; VCAJAS += 1; ESTADO["det_ms"] = int(dt * 1000)
         time.sleep(max(0.0, INTERVALO - dt))
 
 
@@ -147,16 +147,13 @@ def bucle(fuente):
                 time.sleep(0.05); continue
         if fuente == 0: frame = cv2.flip(frame, 1)   # efecto espejo de la cámara
         with LOCK:
-            ULTIMO_CRUDO = frame; N_CRUDO += 1; e = dict(ESTADO); cajas, dets, v = list(CAJAS), list(DETS), VCAJAS
+            ULTIMO_CRUDO = frame; N_CRUDO += 1; e = dict(ESTADO); cajas, v = list(CAJAS), VCAJAS
         pq = 480 / frame.shape[1]; cur = cv2.cvtColor(cv2.resize(frame, (480, int(frame.shape[0] * pq))), cv2.COLOR_BGR2GRAY)
         if v != ver or prev is None: vivas, ver = cajas, v   # detección nueva: se parte de sus cajas
         else: vivas = mover(prev, cur, vivas, pq)           # si no, las cajas siguen a la cara
         prev = cur; cajas = vivas
         salida = frame.copy()
         if e["esconder"]: aplicar(salida, cajas, e["modo"], e["bloque"], e["fuerza"], e["color"], e["ruido"])
-        if e["cajas"]:
-            for d in dets: cv2.rectangle(salida, (d[0], d[1]), (d[0] + d[2], d[1] + d[3]), (0, 200, 255), 2)
-            for c in cajas: cv2.rectangle(salida, (int(c[0]), int(c[1])), (int(c[0] + c[2]), int(c[1] + c[3])), (0, 255, 0), 2)
         ok, jpg = cv2.imencode(".jpg", salida, [cv2.IMWRITE_JPEG_QUALITY, 80])
         n += 1
         with LOCK:
@@ -197,17 +194,15 @@ button:hover{border-color:var(--acc)}#err{color:#c0392b;margin-top:8px}
 <div id="como">
 <h2>Cómo esconder</h2>
 <select id="modo" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit;margin-bottom:6px">
-<option value="desenfoque">Desenfoque (en óvalo)</option><option value="pixelado">Pixelado</option><option value="tapado">Tapado sólido</option><option value="ruido">Ruido</option></select>
+<option value="desenfoque">Desenfoque (óvalo)</option><option value="pixelado">Pixelado (rectángulo)</option><option value="tapado">Tapado sólido (óvalo)</option><option value="ruido">Ruido (óvalo)</option></select>
 <div id="tam"><label style="display:block"><small>Tamaño del bloque: <b id="bv">16</b> × <b id="bv2">16</b> píxeles de la imagen. Cada bloque se pinta con su color promedio.</small>
 <input type="range" id="bloque" min="4" max="64" step="1" value="16" style="width:100%"></label></div>
 <div id="fz"><label style="display:block"><small>Intensidad del desenfoque: <b id="fv">1.0</b> (kernel gaussiano relativo al tamaño de la cara)</small>
 <input type="range" id="fuerza" min="0.2" max="3" step="0.1" value="1" style="width:100%"></label></div>
 <div id="tp"><label style="display:block"><small>Color del tapado</small>
 <select id="color" style="width:100%;padding:8px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit"><option value="negro">Negro</option><option value="blanco">Blanco</option><option value="promedio">Color promedio de la cara</option></select></label></div>
-<div id="rz"><label style="display:block"><small>Intensidad del ruido: <b id="rv">60</b> (desviación). Ojo: con poco ruido la cara se puede recuperar.</small>
-<input type="range" id="ruido" min="10" max="150" step="5" value="60" style="width:100%"></label></div>
-<h2>Depuración</h2>
-<label><input type="checkbox" id="cajas"> Mostrar cajas <small>(naranja: detección; verde: confirmada)</small></label>
+<div id="rz"><label style="display:block"><small>Intensidad del ruido: <b id="rv">80</b> %. Al 100 % es ruido puro (no queda nada de la cara); con poco ruido la cara se puede recuperar.</small>
+<input type="range" id="ruido" min="10" max="100" step="5" value="80" style="width:100%"></label></div>
 <h2>Detectado ahora</h2>
 <div><span class="num" id="n">0</span> <span>caras</span> · <small id="fps"></small></div>
 <button id="cap">Guardar captura</button><small id="msg"></small>
@@ -215,11 +210,11 @@ button:hover{border-color:var(--acc)}#err{color:#c0392b;margin-top:8px}
 </aside></main>
 <script>
 const $=id=>document.getElementById(id);
-async function envia(){await fetch('/estado',{method:'POST',body:JSON.stringify({esconder:$('esconder').checked,cajas:$('cajas').checked,
+async function envia(){await fetch('/estado',{method:'POST',body:JSON.stringify({esconder:$('esconder').checked,
 modo:$('modo').value,bloque:+$('bloque').value,fuerza:+$('fuerza').value,color:$('color').value,ruido:+$('ruido').value})})}
 function vista(){const on=$('esconder').checked;$('txtesc').textContent=on?'Sí, esconder':'No, mostrar todo';
 $('como').classList.toggle('apagado',!on);$('modo').disabled=!on;const m=$('modo').value;$('tam').classList.toggle('apagado',m!=='pixelado');$('fz').classList.toggle('apagado',m!=='desenfoque');$('tp').classList.toggle('apagado',m!=='tapado');$('rz').classList.toggle('apagado',m!=='ruido');$('rv').textContent=$('ruido').value;$('bv').textContent=$('bv2').textContent=$('bloque').value;$('fv').textContent=(+$('fuerza').value).toFixed(1)}
-['esconder','cajas'].forEach(i=>$(i).onchange=()=>{vista();envia()});vista();envia();['modo','color'].forEach(i=>$(i).onchange=()=>{vista();envia()});['bloque','fuerza','ruido'].forEach(i=>$(i).oninput=()=>{vista();envia()});
+['esconder'].forEach(i=>$(i).onchange=()=>{vista();envia()});vista();envia();['modo','color'].forEach(i=>$(i).onchange=()=>{vista();envia()});['bloque','fuerza','ruido'].forEach(i=>$(i).oninput=()=>{vista();envia()});
 $('cap').onclick=async()=>{const r=await (await fetch('/captura',{method:'POST'})).json();$('msg').textContent=' '+(r.ruta||r.error)}
 setInterval(async()=>{try{const e=await (await fetch('/estado')).json();$('n').textContent=e.n_caras;$('fps').textContent=e.fps+' cuadros/s · detección '+e.det_ms+' ms';$('err').textContent=e.error}catch(_){}},500);
 </script></body></html>"""
@@ -254,13 +249,13 @@ class H(BaseHTTPRequestHandler):
         if self.path == "/estado":
             d = json.loads(cuerpo or b"{}")
             with LOCK:
-                for k in ("esconder", "cajas"):
+                for k in ("esconder",):
                     if k in d: ESTADO[k] = bool(d[k])
                 if isinstance(d.get("bloque"), int) and 4 <= d["bloque"] <= 64: ESTADO["bloque"] = d["bloque"]
                 if isinstance(d.get("fuerza"), (int, float)) and 0.2 <= d["fuerza"] <= 3.0: ESTADO["fuerza"] = float(d["fuerza"])
                 if d.get("modo") in ("desenfoque", "pixelado", "tapado", "ruido"): ESTADO["modo"] = d["modo"]
                 if d.get("color") in ("negro", "blanco", "promedio"): ESTADO["color"] = d["color"]
-                if isinstance(d.get("ruido"), (int, float)) and 10 <= d["ruido"] <= 150: ESTADO["ruido"] = float(d["ruido"])
+                if isinstance(d.get("ruido"), (int, float)) and 10 <= d["ruido"] <= 100: ESTADO["ruido"] = float(d["ruido"])
             self._json({"ok": True})
         elif self.path == "/captura":
             with LOCK: f = None if ULTIMO_FRAME is None else ULTIMO_FRAME.copy()
