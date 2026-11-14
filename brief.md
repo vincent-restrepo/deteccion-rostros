@@ -28,3 +28,6 @@ Ver `borradores/procesamiento-dataset.md`. Antecedente: repo `vincent-restrepo/d
 ## Pendiente
 - Tamaño mínimo de cara en alcance (recomendación: 48 px de alto).
 - Datasets de desarrollo, prueba final y «dejar uno fuera».
+
+## Material para la presentación
+- `entrega/transformaciones-blur-pixelado.html`: página interactiva (funciona sin internet; se abre con doble clic) para explicar cómo se hace el desenfoque y el pixelado con matrices.
