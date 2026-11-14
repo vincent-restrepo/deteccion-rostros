@@ -26,3 +26,6 @@ Vincent: para la clase pesa más el análisis de píxeles que entrenar un modelo
 
 ## D7 · 2026-11-14 · El desenfoque va en óvalo; el pixelado y el tapado, en rectángulo
 Vincent: el desenfoque se hacía en un cuadrado y prefiere un óvalo que siga la cara (pidió solo el desenfoque). `editar(..., forma="ovalo")` usa la elipse inscrita en la región; la app lo aplica solo al desenfoque. (Una primera versión lo aplicó también al pixelado y tuvo una opción «Forma» en el panel; Vincent corrigió: solo el desenfoque. Se quitó la opción.) Consecuencia para la parte B: un desenfoque en óvalo ya no es un rectángulo completo; el generador de datos debe producir desenfoques ovalados y medirse aparte (pendiente).
+
+## D8 · 2026-11-14 · Sliders de intensidad en la app (bloque 4–64 y desenfoque 0,2–3,0)
+Vincent: el pixelado y el desenfoque deben tener cada uno un slider para mover la intensidad en vivo (le gustó el slider de la página de explicación más que los botones 4/8/16/32/64). Pixelado: bloque entero de 4 a 64 px. Desenfoque: `fuerza` de 0,2 a 3,0 (1,0 = valor anterior), relativa al tamaño de la cara. El panel muestra solo el slider del modo elegido, y al abrir la página se sincroniza el servidor con los controles.
