@@ -41,6 +41,8 @@ python src/app_blur.py --fuente foto.jpg            # una foto
 python src/app_blur.py --puerto 8765                # puerto (por defecto 8765)
 ```
 
+Por defecto la app usa el **detector combinado** de la cara principal (E15) si existen los modelos en `modelos/`; si faltan, avisa y usa Haar. Opciones: `--detector haar` (el anterior), `--umbral 0.2` (menos falsos positivos; por defecto 0,1, modo privacidad) y `--modelo modelos/fusion_equilibrado.pkl`.
+
 Abre <http://localhost:8765>. A la derecha eliges el filtro en un menú (desenfoque, pixelado, tapado sólido, ruido, reducción de colores) y mueves su slider. «Guardar captura» deja la imagen en `salidas_demo/` (esa carpeta **no** se sube a git). En macOS, la primera vez el sistema te pide permiso para usar la cámara.
 
 ## 3. Datos (no vienen en el repo)
@@ -58,12 +60,27 @@ python src/generar_alteraciones.py train 3000 1 && python src/generar_alteracion
 
 `datos/division_wider.csv` ya está versionado (la misma división para todos). Las 4.200 imágenes alteradas se generan en `datos/alteradas/` (≈ 600 MB, fuera de git).
 
+## 3b. Detector de la cara principal (modelos que hay que entrenar)
+
+Los modelos no vienen en el repo (`modelos/` está en `.gitignore`). Con los datasets ya descargados (sección 3) y las divisiones generadas, se entrenan en unos 10 minutos:
+
+```bash
+python src/dividir_openimages.py || true   # solo si falta datos/division_openimages.csv (ver AGENTS.md)
+python src/hog_svm_cara.py entrenar 3000 1500 2 1                                   # HOG+SVM propio (2 min) → modelos/hogsvm_cara.npz
+python src/ablacion_fusion.py cache 1000 0                                          # candidatas de 2.000 imágenes de entrenamiento (≈ 5 min)
+python src/ablacion_fusion.py modelo dlib+haar+hogsvm modelos/fusion_rapido.pkl     # versión rápida (la de la app)
+python src/ablacion_fusion.py modelo dlib+dlib_espejo+hogsvm modelos/fusion_equilibrado.pkl   # versión equilibrada
+```
+
+Medir: `python src/evaluar_principal.py val 5000 1 fusionrapido_t0.2` (toda la validación; ver `borradores/experimentos.md`, E12–E15). **No uses `test`** hasta la evaluación final.
+
 ## 4. Experimentos y evaluación
 
 Todos miden con la regla de alcance (caras de 48 px de alto o más) y el protocolo sin fuga de datos; la prueba se usa una sola vez al final.
 
 | Qué | Comando |
 |---|---|
+| Cara principal: detectores y combinado (E12–E15) | `python src/evaluar_principal.py val 5000 1 haar_0grados,dlib_x1_t-0.4,fusionrapido_t0.2` |
 | Detectores de caras (E7) | `python src/evaluar_caras.py 300 1 haar_0grados,giros_y_perfil,dlib_hog_x1,dlib_hog_x2,fusion` |
 | Segunda etapa HOG+SVM (E11) | `python src/verificador.py extraer val 300 2 && python src/verificador.py extraer train 1500 1 && python src/verificador.py evaluar` |
 | Verificar tu descarga (SHA-256) | `python src/hashes_datos.py verificar` |
@@ -79,6 +96,10 @@ Los resultados y su interpretación están en `borradores/experimentos.md`. Los 
 src/app_blur.py              app web local (parte A)
 src/ediciones.py             los filtros; los usan la app y el generador de datos
 src/detector_caras.py        detector clásico (Haar con giros y perfiles)
+src/hog_svm_cara.py          HOG+SVM propio con minado de negativos (E13)
+src/detector_fusion.py       detector combinado de la cara principal (E14, E15)
+src/ablacion_fusion.py       caché de candidatas, ablación y entrenamiento del segundo paso
+src/evaluar_principal.py     evaluación de la cara principal por dataset (D13)
 src/analisis_pixeles.py      revisor por reglas de píxeles (parte B, método principal)
 src/revisor.py               revisor entrenado (comparación)
 src/verificador.py           candidatas permisivas + HOG+SVM propio

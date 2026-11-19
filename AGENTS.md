@@ -88,6 +88,14 @@ Para lo básico basta el primero. El segundo y el tercero hacen falta solo para 
 
 Pendientes conocidos (ver también `bitacora.md`): el revisor no reconoce **tapados ni desenfoques en óvalo** ni el **ruido**; el generador de datos debe producirlos y medirse aparte; la app todavía usa Haar y no el dlib con umbral bajo; no hay una prueba con cámara de dlib permisivo.
 
+## 6a. Cifras de referencia de la cara principal (D13; validación completa: 804 WIDER + 1.549 Open Images; recall de la cara principal / falsos positivos por imagen)
+Otra prueba que la de la sección 6: **no se comparan entre sí**. Detalle y límites en `borradores/experimentos.md` (E12–E15). `test` sin tocar.
+- dlib HOG ×0: 0,629 / 0,04 (WIDER), 0,602 / 0,05 (Open Images), 0,05 s por imagen.
+- dlib HOG ×1, umbral −0,4: 0,698 / 0,35 y 0,675 / 0,23, 0,19 s.
+- **Detector combinado rápido** (`modelos/fusion_rapido.pkl`, umbral 0,2): 0,746 / 0,18 y 0,726 / 0,18, **0,30 s** (el de la app). Equilibrado: 0,754 y 0,745, 0,42 s. Completo (7 fuentes): 0,756 y 0,750, 1,02 s.
+- HOG+SVM propio solo (E13): peor que dlib; sirve como fuente del combinado.
+- Faltan aún ~1 de cada 4 caras principales. Margen de error estadístico ≈ ±1,5 puntos: diferencias de 1–2 puntos no significan nada.
+
 ## 6. Cifras de referencia (para comparar; todas en validación, con la regla de 48 px)
 
 | Experimento | Método | Recall | Precisión | Muestra |
