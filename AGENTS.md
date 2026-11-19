@@ -92,8 +92,8 @@ Pendientes conocidos (ver también `bitacora.md`): el revisor no reconoce **tapa
 Otra prueba que la de la sección 6: **no se comparan entre sí**. Detalle y límites en `borradores/experimentos.md` (E12–E15). `test` sin tocar.
 - dlib HOG ×0: 0,629 / 0,04 (WIDER), 0,602 / 0,05 (Open Images), 0,05 s por imagen.
 - dlib HOG ×1, umbral −0,4: 0,698 / 0,35 y 0,675 / 0,23, 0,19 s.
-- **Detector combinado rápido** (`modelos/fusion_rapido.pkl`, umbral 0,2): 0,746 / 0,18 y 0,726 / 0,18, **0,30 s** (el de la app). Equilibrado: 0,754 y 0,745, 0,42 s. Completo (7 fuentes): 0,756 y 0,750, 1,02 s.
-- HOG+SVM propio solo (E13): peor que dlib; sirve como fuente del combinado.
+- **Detector combinado rápido** (`modelos/fusion_rapido.pkl`, umbral 0,2; con Haar de perfil, E17): 0,765 / 0,22 y 0,765 / 0,20, **0,36 s** (el de la app; con umbral 0,1: 0,785 y 0,776). Equilibrada: 0,781 y 0,771, 0,53 s. Completa (11 fuentes): 0,782 y 0,783, 1,87 s. Versión anterior (E15, sin perfil): 0,746 y 0,726.
+- HOG+SVM propio solo (E13): peor que dlib; sirve como fuente del combinado. Más datos de entrenamiento del segundo paso no ayudan (E16); la mejora que quedó vino de nuevas fuentes de candidatas (E17).
 - Faltan aún ~1 de cada 4 caras principales. Margen de error estadístico ≈ ±1,5 puntos: diferencias de 1–2 puntos no significan nada.
 
 ## 6. Cifras de referencia (para comparar; todas en validación, con la regla de 48 px)

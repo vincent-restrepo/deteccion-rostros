@@ -10,14 +10,16 @@ from concurrent.futures import ProcessPoolExecutor
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import hog_svm_cara as hs
 RUTA = "modelos/fusion.pkl"; MAX_CARAS = 3; UMBRAL_DLIB = -1.0; AUSENTE = -3.0
-FUENTES = ("dlib", "dlib_clahe", "dlib_espejo", "dlib_rot_mas", "dlib_rot_menos", "haar", "hogsvm")
+FUENTES = ("dlib", "dlib_clahe", "dlib_espejo", "dlib_rot_mas", "dlib_rot_menos", "haar", "hogsvm")   # las 7 de E14/E15 (modelos viejos)
+NUEVAS = ("haar_perfil", "dlib_pad", "dlib_rot_90", "dlib_rot_270")   # E17: perfiles, caras cortadas por el borde, cabezas giradas 90°
+ORDEN = FUENTES + NUEVAS
 _c = {}
 
 def _recursos():
     if not _c:
         import dlib
         _c["dlib"] = dlib.get_frontal_face_detector(); _c["haar"] = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_alt2.xml")
-        _c["clahe"] = cv2.createCLAHE(2.0, (8, 8)); z = np.load(hs.RUTA_MODELO); _c["w"], _c["b"] = z["w"], float(z["b"])
+        _c["clahe"] = cv2.createCLAHE(2.0, (8, 8)); _c["perfil"] = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_profileface.xml"); z = np.load(hs.RUTA_MODELO); _c["w"], _c["b"] = z["w"], float(z["b"])
     return _c
 
 def _dlib(g):
@@ -36,13 +38,23 @@ def candidatas(g, usar=None):
         for b, s in _dlib(cv2.warpAffine(g, M, (W, H))):
             cx, cy = b[0] + b[2] / 2, b[1] + b[3] / 2; ox, oy = inv @ np.array([cx, cy, 1.0])
             out.append(((int(ox - b[2] / 2), int(oy - b[3] / 2), b[2], b[3]), nombre, s))
+    if ok("haar_perfil"):
+        for r in c["perfil"].detectMultiScale(g, 1.1, 3, minSize=(40, 40)): out.append((tuple(int(v) for v in r), "haar_perfil", 1.0))
+        for r in c["perfil"].detectMultiScale(cv2.flip(g, 1), 1.1, 3, minSize=(40, 40)): out.append(((W - int(r[0]) - int(r[2]), int(r[1]), int(r[2]), int(r[3])), "haar_perfil", 1.0))
+    if ok("dlib_pad"):   # el borde se refleja: una cara cortada por el borde queda «completa» al otro lado del espejo
+        p_ = int(0.2 * max(H, W))
+        for b, s in _dlib(cv2.copyMakeBorder(g, p_, p_, p_, p_, cv2.BORDER_REFLECT_101)): out.append(((b[0] - p_, b[1] - p_, b[2], b[3]), "dlib_pad", s))
+    if ok("dlib_rot_90"):
+        for b, s in _dlib(cv2.rotate(g, cv2.ROTATE_90_CLOCKWISE)): out.append(((b[1], H - 1 - (b[0] + b[2]), b[3], b[2]), "dlib_rot_90", s))
+    if ok("dlib_rot_270"):
+        for b, s in _dlib(cv2.rotate(g, cv2.ROTATE_90_COUNTERCLOCKWISE)): out.append(((W - 1 - (b[1] + b[3]), b[0], b[3], b[2]), "dlib_rot_270", s))
     if ok("haar"):
         for r in c["haar"].detectMultiScale(g, 1.1, 3, minSize=(40, 40)): out.append((tuple(int(v) for v in r), "haar", 1.0))
     if ok("hogsvm"):
         for v, p in hs.predecir(g, c["w"], c["b"], -0.5)[:15]: out.append((hs.cara_de_ventana(v), "hogsvm", p))
     return out
 
-def agrupar(cands, g):
+def agrupar(cands, g, extra=False, fuentes=FUENTES):
     """Une candidatas solapadas (IoU > 0,4) y devuelve (caja, vector de rasgos) por grupo."""
     c = _recursos(); H, W = g.shape; grupos = []
     for caja, fuente, s in sorted(cands, key=lambda t: -(t[2] if t[1] != "haar" else 0.5)):
@@ -52,12 +64,27 @@ def agrupar(cands, g):
         else: grupos.append({"caja": caja, "miembros": [(caja, fuente, s)]})
     hog = hs.HOG(); out = []
     for gr in grupos:
-        x, y, w, h = gr["caja"]; mejor = {f: AUSENTE for f in FUENTES}
+        x, y, w, h = gr["caja"]; mejor = {f: AUSENTE for f in fuentes}
         for _, f, s in gr["miembros"]: mejor[f] = max(mejor[f], s)
         r = hs.recorte(g, hs.ventana_de_cara(gr["caja"])); re = float(c["w"] @ hog.compute(r).ravel() + c["b"]) if r is not None else AUSENTE
-        n = sum(1 for f in FUENTES if mejor[f] > AUSENTE)
-        out.append((gr["caja"], [mejor[f] for f in FUENTES] + [n, re, h / H, (x + w / 2) / W, (y + h / 2) / H, w / max(1, h), np.log(max(h, 1))]))
+        n = sum(1 for f in fuentes if mejor[f] > AUSENTE)
+        out.append((gr["caja"], [mejor[f] for f in fuentes] + [n, re, h / H, (x + w / 2) / W, (y + h / 2) / H, w / max(1, h), np.log(max(h, 1))]))
+    if extra and out: out = _rasgos_extra(out, g, len(fuentes))
     return out
+
+def _rasgos_extra(grupos, g, n_f):
+    """Rasgos nuevos (E16): nitidez y contraste dentro de la caja, y contexto: lugar de cada grupo por tamaño y por puntajes frente a los demás de la imagen."""
+    H, W = g.shape; dl = lambda f: max(f[0], f[1], f[2], f[3], f[4])   # mejor puntaje de dlib entre sus variantes
+    res = [f[n_f + 1] for _, f in grupos]; dls = [dl(f) for _, f in grupos]; hs_ = [c[3] for c, _ in grupos]; sal = []
+    orden = lambda v, x: int(sum(1 for o in v if o > x))   # cuántos grupos tienen un valor mayor (0 = el mejor)
+    for (c, f), r_, d_, h_ in zip(grupos, res, dls, hs_):
+        x, y, w, h = c; rec = g[max(0, y):max(0, y) + max(1, h), max(0, x):max(0, x) + max(1, w)]
+        if rec.size < 16: nit = con = med = gra = 0.0
+        else:
+            rec = cv2.resize(rec, (32, 32), interpolation=cv2.INTER_AREA); nit = float(cv2.Laplacian(rec, cv2.CV_64F).var()); con = float(rec.std()); med = float(rec.mean())
+            gra = float(np.mean(np.hypot(cv2.Sobel(rec, cv2.CV_32F, 1, 0), cv2.Sobel(rec, cv2.CV_32F, 0, 1))))
+        sal.append((c, f + [nit, con, med, gra, len(grupos), orden(res, r_), orden(dls, d_), orden(hs_, h_), h_ / max(hs_), r_ - max(res), d_ - max(dls)]))
+    return sal
 
 def _una(args):
     m = args; g, cajas, _ = hs.cargar_img(m)
@@ -66,13 +93,14 @@ def _una(args):
 
 def cargar_detector(umbral=0.5, ruta=RUTA, max_caras=MAX_CARAS):
     import joblib; obj = joblib.load(ruta)
-    clf, usar = (obj["clf"], set(obj["fuentes"])) if isinstance(obj, dict) else (obj, None)   # modelos viejos: todas las fuentes
+    clf, usar = (obj["clf"], set(obj["fuentes"])) if isinstance(obj, dict) else (obj, set(FUENTES))   # modelos viejos (E14): solo sus 7 fuentes
+    extra = bool(obj.get("extra", False)) if isinstance(obj, dict) else False; orden = tuple(obj.get("orden_fuentes", FUENTES)) if isinstance(obj, dict) else FUENTES
     def det(g):
-        gr = agrupar(candidatas(g, usar), g)
+        gr = agrupar(candidatas(g, usar), g, extra, orden)
         if not gr: return []
         p = clf.predict_proba(np.array([f for _, f in gr]))[:, 1]
-        orden = sorted(zip(p, [c for c, _ in gr]), key=lambda t: -t[0])
-        return [c for pp, c in orden if pp >= umbral][:max_caras]
+        ranking = sorted(zip(p, [c for c, _ in gr]), key=lambda t: -t[0])
+        return [c for pp, c in ranking if pp >= umbral][:max_caras]
     return det
 
 if __name__ == "__main__":

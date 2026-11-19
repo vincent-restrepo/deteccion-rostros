@@ -34,7 +34,7 @@ def detector(nombre):
         f = cargar_detector(float(nombre[8:]))
     elif nombre.startswith("fusion"):
         from detector_fusion import cargar_detector as cf
-        base, u = nombre.split("_t"); f = cf(float(u), {"fusion": "modelos/fusion.pkl", "fusionrapido": "modelos/fusion_rapido.pkl", "fusioneq": "modelos/fusion_equilibrado.pkl"}[base])
+        base, u = nombre.split("_t"); f = cf(float(u), {"fusion": "modelos/fusion.pkl", "fusionrapido": "modelos/fusion_rapido.pkl", "fusioneq": "modelos/fusion_equilibrado.pkl", "fusioncompleto": "modelos/fusion_completo.pkl"}[base])
     else: raise SystemExit("Detector desconocido: " + nombre)
     _det[nombre] = f; return f
 

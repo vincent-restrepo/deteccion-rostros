@@ -139,3 +139,29 @@ E1, E2, … con configuración y resultado. (Los resultados E1, E3, E5 y E6 del 
 
 **Lectura:** (1) Ninguna fuente es imprescindible: quitar cualquiera cuesta menos de 1,5 puntos (dentro del error estadístico). (2) **Gran parte de la mejora viene del segundo paso y del tope de 3 cajas, no de las fuentes extra**: solo dlib normal con árboles ya supera a dlib −0,4 solo, con la mitad de falsos positivos. (3) La versión rápida cabe en el presupuesto de la app (≈ 0,4 s por detección) y gana 4–5 puntos de recall frente a dlib −0,4 con la mitad de falsos positivos.
 **Límites:** los modelos y umbrales se eligieron con la misma validación (optimismo pequeño); `test` sin tocar. Con 10 procesos en paralelo los tiempos salen ~3 veces mayores (competencia por CPU). Los falsos positivos de la ablación usan una regla de caras pequeñas aproximada, pero las versiones finales usan el evaluador oficial. No se probó con webcam.
+
+## E16 · 2026-11-19 · Rasgos nuevos para el segundo paso y más datos de entrenamiento
+**Pregunta:** ¿el segundo paso (árboles con parada temprana) mejora con 11 rasgos más (nitidez, contraste, brillo y bordes dentro de la caja; lugar de cada candidata por tamaño y por puntaje frente a las demás de la imagen) o con 3 veces más imágenes de entrenamiento (2.000 → 6.834)?
+**Método:** `src/ablacion_fusion.py medir …+extra`, con `CACHE_ENTRENAMIENTO=datos/cache_fusion_grande.pkl` para el entrenamiento grande. Misma validación completa (804 + 1.549). Una primera corrida mezcló por error todas las variantes en una sola (el shell no separó los argumentos); se repitió bien. Logs: `borradores/e16-*.log`.
+**Resultado (versión rápida, umbral 0,2; recall de la cara principal WIDER · Open Images):** sin rasgos nuevos 0,749 · 0,726 (2.000 imágenes) y 0,750 · 0,728 (6.834); con rasgos nuevos 0,756 · 0,743 (2.000) y 0,756 · 0,740 (6.834). Las 7 fuentes con rasgos nuevos: 0,767 · 0,765 (2.000) y 0,772 · 0,770 (6.834), contra 0,755 · 0,749 sin ellos (E15).
+**Lectura:** los rasgos nuevos suben ≈ 0,7–1,7 puntos (en el borde del error estadístico, ±1,5); **3 veces más datos casi no cambia nada** (+0,1 a +0,2): los datos no son el cuello de botella. Se conservan los rasgos nuevos (no cuestan casi tiempo) y se entrena con 2.000 imágenes.
+**Análisis de fallos:** con las 7 fuentes, a la cara principal la encuentra alguna candidata en 0,873 (WIDER) y 0,852 (Open Images) de los casos (el «techo»); el detector acierta 0,75: ≈ 12 puntos se pierden en el segundo paso. De las 332 caras principales sin ninguna candidata (de 2.353), un mosaico de 24 al azar (visto solo en local) mostró: perfiles o caras de espaldas, cabezas giradas casi 90°, caras cortadas por el borde, caras tapadas (casco, gorra, manos) y **2 etiquetas que cubren una multitud entera** (ruido del dataset, no se puede arreglar). Eso llevó a E17.
+
+## E17 · 2026-11-19 · Cuatro fuentes nuevas de candidatas (perfil, borde reflejado, giros de 90°)
+**Pregunta:** ¿se pueden encontrar las caras que ninguna fuente ve (perfiles, cortadas, giradas)?
+**Método:** `src/detector_fusion.py` (`NUEVAS`): `haar_perfil` (cascada de perfil de OpenCV, imagen y su espejo), `dlib_pad` (borde reflejado 20 %: una cara cortada queda «completa» al otro lado del espejo), `dlib_rot_90` y `dlib_rot_270` (imagen girada 90° a cada lado; el mapeo de coordenadas se verificó girando 43 fotos: 43/43 en cada sentido). `ablacion_fusion.py agregar` suma solo las fuentes nuevas al caché. Se reentrena el segundo paso (con rasgos nuevos) para cada combinación y se mide en la validación completa; las versiones finales se miden de punta a punta con `evaluar_principal.py`. Logs: `borradores/e17-*.log`.
+**Techo de candidatas:** 0,873 → **0,897** (WIDER) y 0,852 → **0,873** (Open Images) con las 11 fuentes. Caras que solo encuentran las nuevas: 25 el Haar de perfil, 18 y 14 las rotaciones de 90°, 4 el borde reflejado.
+**Aporte de cada fuente nueva a la versión rápida (umbral 0,2; recall WIDER · Open Images):** base (con rasgos nuevos) 0,756 · 0,743; **+ Haar de perfil 0,770 · 0,768**; + borde reflejado 0,757 · 0,744; + rotaciones de 90° 0,761 · 0,744 (cuestan ≈ 0,5 s); las 11 fuentes 0,781 · 0,790.
+**Versiones finales (validación completa; umbral 0,2 salvo indicación; recall de la cara principal / falsos positivos por imagen; tiempo en un solo proceso):**
+
+| Versión | Fuentes | WIDER | Open Images | Tiempo |
+|---|---|---|---|---|
+| Rápida (app) | dlib + Haar + HOG+SVM + Haar de perfil | 0,765 / 0,22 | 0,765 / 0,20 | **0,36 s** |
+| Rápida, umbral 0,1 | igual | 0,785 / 0,38 | 0,776 / 0,34 | 0,36 s |
+| Equilibrada | + dlib espejado | 0,781 / 0,18 | 0,771 / 0,18 | 0,53 s |
+| Completa | las 11 | 0,782 / 0,19 | 0,783 / 0,19 | 1,87 s |
+| (E15, versión rápida anterior) | dlib + Haar + HOG+SVM | 0,746 / 0,18 | 0,726 / 0,18 | 0,30 s |
+| (dlib −0,4, referencia) | — | 0,698 / 0,35 | 0,675 / 0,23 | 0,19 s |
+
+**Lectura:** la mejor mejora por lo que cuesta es el Haar de perfil (+1,4 y +2,5 puntos por ≈ 0,06 s). Frente a dlib −0,4, la versión rápida gana **+6,7 y +9 puntos** de recall con menos falsos positivos. El borde reflejado y las rotaciones de 90° casi no sirven en el conjunto de la cara principal (se dejan en la versión completa). Queda ≈ 1 de cada 4 caras principales sin encontrar (parte son etiquetas ruidosas).
+**Límites:** modelos y umbrales escogidos con la misma validación (optimismo pequeño); error estadístico ≈ ±1,5 puntos; `test` sin tocar; no se probó con cámara real; las cifras de segundos de `evaluar_principal.py` salen ~3 veces mayores por la competencia entre procesos (los de la tabla son de un solo proceso). Durante la medición aparecieron dos errores de código míos (un choque de nombres y la compatibilidad con modelos viejos) que se corrigieron antes de las cifras finales.
