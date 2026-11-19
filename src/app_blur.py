@@ -20,7 +20,7 @@ ANCHO_DET = 960             # frontal y perfil se buscan a este ancho; a 480 se 
 ANCHO_GIROS = 480           # los giros (lo más caro) se prueban solo a este ancho: las cabezas inclinadas cercanas son grandes
 FPS_MAX = 20                # tope de cuadros por segundo del video mostrado
 HILOS = 3                   # hilos que puede usar OpenCV (para no calentar el equipo)
-ANCHO_FUSION = 800          # el detector combinado (E14/E15) se midió a este ancho
+ANCHO_FUSION = 640          # ancho de trabajo del detector combinado: a 640 px la cara principal se encuentra igual que a 800 y tarda un 37 % menos (E20)
 FRONTAL_FUSION = None       # función de detección frontal del detector combinado, o None para usar Haar (se decide al arrancar)
 INTERVALO = 0.4             # segundos mínimos entre detecciones (≈ 2,5 por segundo): cada una cuesta ≈ 0,3 s de procesador (E8)
 

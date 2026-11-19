@@ -1,0 +1,10 @@
+ANCHO 640
+fusionrapido_t0.1 {"wider": {"imagenes": 804, "recall_principal": 0.792, "recall_secundarias": 0.676, "fp_por_imagen": 0.295, "precision": 0.785, "seg_por_imagen_deteccion": 0.981}, "openimages": {"imagenes": 1549, "recall_principal": 0.79, "recall_secundarias": 0.652, "fp_por_imagen": 0.266, "precision": 0.808, "seg_por_imagen_deteccion": 0.842}, "ambos": {"imagenes": 2353, "recall_principal": 0.791, "recall_secundarias": 0.659, "fp_por_imagen": 0.276, "precision": 0.8, "seg_por_imagen_deteccion": 0.889}} (213 s)
+ANCHO 1000
+fusionrapido_t0.1 {"wider": {"imagenes": 804, "recall_principal": 0.784, "recall_secundarias": 0.693, "fp_por_imagen": 0.301, "precision": 0.781, "seg_por_imagen_deteccion": 2.161}, "openimages": {"imagenes": 1549, "recall_principal": 0.79, "recall_secundarias": 0.679, "fp_por_imagen": 0.297, "precision": 0.793, "seg_por_imagen_deteccion": 1.54}, "ambos": {"imagenes": 2353, "recall_principal": 0.788, "recall_secundarias": 0.683, "fp_por_imagen": 0.298, "precision": 0.789, "seg_por_imagen_deteccion": 1.752}} (417 s)
+FIN
+ANCHO 480
+fusionrapido_t0.1 {"wider": {"imagenes": 804, "recall_principal": 0.775, "recall_secundarias": 0.607, "fp_por_imagen": 0.285, "precision": 0.783, "seg_por_imagen_deteccion": 0.643}, "openimages": {"imagenes": 1549, "recall_principal": 0.793, "recall_secundarias": 0.623, "fp_por_imagen": 0.259, "precision": 0.811, "seg_por_imagen_deteccion": 0.56}, "ambos": {"imagenes": 2353, "recall_principal": 0.787, "recall_secundarias": 0.618, "fp_por_imagen": 0.268, "precision": 0.802, "seg_por_imagen_deteccion": 0.588}} (141 s)
+ANCHO 560
+fusionrapido_t0.1 {"wider": {"imagenes": 804, "recall_principal": 0.782, "recall_secundarias": 0.667, "fp_por_imagen": 0.289, "precision": 0.786, "seg_por_imagen_deteccion": 0.785}, "openimages": {"imagenes": 1549, "recall_principal": 0.795, "recall_secundarias": 0.642, "fp_por_imagen": 0.283, "precision": 0.798, "seg_por_imagen_deteccion": 0.727}, "ambos": {"imagenes": 2353, "recall_principal": 0.791, "recall_secundarias": 0.649, "fp_por_imagen": 0.285, "precision": 0.794, "seg_por_imagen_deteccion": 0.747}} (179 s)
+FIN2

@@ -191,3 +191,19 @@ E1, E2, … con configuración y resultado. (Los resultados E1, E3, E5 y E6 del 
 **Resultado (umbral 0,2, recall de la cara principal / falsos positivos, WIDER · Open Images):** referencia 0,775 / 0,17 · 0,781 / 0,18; 15 hojas 0,777 · 0,780; 63 hojas 0,767 · 0,779; regularización L2 y hojas mínimas 0,777 · 0,779; tasa 0,1 y profundidad 6: 0,777 · 0,781; tasa 0,03 y más iteraciones: 0,776 · 0,782. Con umbral 0,1 las diferencias son iguales de pequeñas (0,785–0,795).
 **Lectura:** ninguna configuración supera a la de referencia por más que el error estadístico (≈ ±1,5 puntos). **El segundo paso ya no depende de sus hiperparámetros**; lo que queda por ganar está en las candidatas, los rasgos o las etiquetas ruidosas. Se conserva la configuración por defecto.
 **Límites:** una sola semilla; seis configuraciones comparadas en la misma validación; no se probó otro tipo de modelo (bosque aleatorio, regresión logística) ni calibración de probabilidades.
+
+## E20 · 2026-11-19 · Ancho de trabajo del detector (velocidad contra recall)
+**Pregunta:** ¿hace falta trabajar a 800 px de ancho, o se puede bajar para ganar velocidad sin perder la cara principal?
+**Método:** `ANCHO_EVAL=<ancho> src/evaluar_principal.py val 5000 1 fusionrapido_t0.1` (versión rápida con corrección de cajas, validación completa: 804 WIDER + 1.549 Open Images). Tiempo medido aparte, en un solo proceso, con 30 imágenes. Log: `borradores/e20-bruto.log`. Los modelos se entrenaron a 800 px y no se reentrenaron.
+**Resultado (recall de la cara principal WIDER · Open Images / falsos positivos por imagen / recall de secundarias WIDER · Open Images / tiempo):**
+
+| Ancho | Cara principal | FP | Secundarias | Tiempo |
+|---|---|---|---|---|
+| 480 px | 0,775 · 0,793 | 0,28 · 0,26 | 0,607 · 0,623 | 0,13 s |
+| 560 px | 0,782 · 0,795 | 0,29 · 0,28 | 0,667 · 0,642 | 0,18 s |
+| **640 px** | **0,792 · 0,790** | 0,29 · 0,27 | 0,676 · 0,652 | **0,24 s** |
+| 800 px (E18) | 0,784 · 0,788 | 0,30 · 0,28 | ≈ 0,688 · 0,676 | 0,37 s |
+| 1000 px | 0,784 · 0,790 | 0,30 · 0,30 | 0,693 · 0,679 | 0,54 s |
+
+**Lectura:** el recall de la **cara principal** es igual entre 480 y 1000 px (todo dentro del error estadístico, ±1,5 puntos). Lo que se pierde al bajar son las caras **secundarias** (más pequeñas), y empieza por debajo de 640 px. **Decisión: la app trabaja a 640 px** (`ANCHO_FUSION`): misma cara principal, casi las mismas secundarias y un 37 % menos de tiempo (0,24 s contra 0,37 s).
+**Límites:** una sola semilla; imágenes de WIDER y Open Images, no webcam (una cara de webcam ocupa más del cuadro que las de estos datasets, lo que favorece a anchos bajos, pero no está medido); los modelos no se reentrenaron a cada ancho.
