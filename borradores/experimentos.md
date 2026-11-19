@@ -217,3 +217,8 @@ E1, E2, … con configuración y resultado. (Los resultados E1, E3, E5 y E6 del 
 - Comparación (mismas 300 imágenes v2): las reglas de píxeles, que solo conocen 3 tipos, localizan 105 (recall 0,20), 140 falsas (precisión 0,43), ruido y colores 0/219; pixelado 48/90 (mejor que el bosque), alarma en 13 de 92 sin edición. El bosque v2 duplica el recall total; las reglas siguen siendo mejores y más rápidas (0,05 s vs 0,5 s) en pixelado.
 - Lectura: el bosque entrenado ya cubre los 5 tipos y los óvalos; el cuello de botella es la localización (cajas), no el tipo. Colores y desenfoque son lo más flojo (≈ 0,2–0,35).
 - Límites: datos sintéticos; umbral ajustado en validación; una corrida; `test` sin tocar. Pendiente: combinar reglas (pixelado) + bosque (resto), mejorar la agrupación de cajas, reentrenar con las 3.000 imágenes.
+
+## E22 · 2026-11-19 · Revisor combinado: reglas (pixelado, tapado) + bosque v2 (resto)
+- Método (`src/revisor_combinado.py`): las cajas de pixelado y tapado de las reglas de píxeles mandan; las del bosque v2 (umbral 0,95) se añaden si no se solapan (IoU < 0,3) con ellas.
+- Resultado (validación, imágenes 150–300, 271 regiones; antes = bosque solo): localiza 153 (recall 0,513 → 0,565), 128 falsas (95 → 128; precisión 0,594 → 0,544), tipo correcto 0,954, alarma en 12 de 45 sin edición (9 → 12). Por tipo: pixelado 33 → 38 de 48, tapado 34 → 42 de 67, desenfoque 17/47, ruido 46/60, colores 10/49.
+- Lectura: gana cobertura en pixelado y tapado a cambio de ≈ 5 puntos de precisión; no cambia el cuello de botella (desenfoque y colores). Una sola corrida, mitad de validación; `test` sin tocar. Queda como opción, no como mejora clara.
