@@ -8,7 +8,7 @@ Uso:  .venv/bin/python src/analisis_pixeles.py evaluar <val|test> [N] | ver <ima
 import sys, os, json, collections, time
 import cv2, numpy as np
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from revisor import cargar, iou
+from revisor import cargar, iou, TIPOS as TIPOS_REV
 
 BLOQUES = (4, 6, 8, 12, 16, 24, 32, 48, 64)
 TAU = 6            # rango máximo (niveles de gris) en 3×3 para llamar «plano» a un píxel
@@ -103,7 +103,7 @@ def analizar(img):
     return sal
 
 def evaluar(div, n, mostrar=True):
-    L = cargar(div, n); t0 = time.time(); tp = fp = fn = ok = 0; por = {t: [0, 0, 0] for t in ("desenfoque", "pixelado", "tapado")}
+    L = cargar(div, n); t0 = time.time(); tp = fp = fn = ok = 0; por = {t: [0, 0, 0] for t in TIPOS_REV}
     conf = collections.Counter(); fp_tipo = collections.Counter(); sin_ed = alarma = 0; err_b = []
     for x in L:
         pred = analizar(cv2.imread(x["ruta"])); gt = x["regiones"]; usado = set()

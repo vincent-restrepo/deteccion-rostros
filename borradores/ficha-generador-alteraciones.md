@@ -4,7 +4,7 @@ Datos de la parte B (revisor). Crea imágenes de WIDER con caras alteradas y gua
 
 | Campo | Valor |
 |---|---|
-| Comando | `python src/generar_alteraciones.py <train\|val\|test> <N> [semilla]` |
+| Comando | `python src/generar_alteraciones.py <train\|val\|test> <N> [semilla] [v2]` (v2: 5 tipos y óvalos, salida en `datos/alteradas_v2/`; ver E21) |
 | Entrada | `entradas/wider-yolo` (imágenes y etiquetas) y `datos/division_wider.csv` (la división sin fuga; solo toma imágenes de la división pedida) |
 | Salida | `datos/alteradas/<división>/imgs/*.jpg` y `etiquetas.jsonl` (una línea por imagen). Fuera de git |
 | Generadas | `train` 3.000 (semilla 1), `val` 600 (semilla 2), `test` 600 (semilla 3; no se toca hasta la evaluación final) = 4.200 |
