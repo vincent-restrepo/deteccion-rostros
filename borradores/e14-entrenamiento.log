@@ -1,0 +1,4 @@
+imágenes del segundo paso: 2000
+grupos: 47416, de los cuales caras (IoU>=0,5): 2448 (264 s)
+árboles usados con parada temprana: 128 de 500; exactitud de entrenamiento 0.992
+guardado modelos/fusion.pkl
