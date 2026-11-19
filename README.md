@@ -51,6 +51,7 @@ Los datasets pesan GB y las fotos de personas no se publican. Todo lo derivado s
 pip install -r requirements-datos.txt
 # Credenciales de Kaggle: crea un token en https://www.kaggle.com/settings y guárdalo en ~/.kaggle/kaggle.json
 python src/descargar_kaggle.py lylmsc/wider-face-for-yolo-training=entradas/wider-yolo   # WIDER (2,6 GB, CC0)
+python src/descargar_kaggle.py fareselmenshawii/face-detection-dataset=entradas/faces-openimages   # Open Images, segundo dataset (4,6 GB)
 python src/dividir_wider.py                    # división sin fuga → datos/division_wider.csv (ya viene en el repo)
 python src/generar_alteraciones.py train 3000 1 && python src/generar_alteraciones.py val 600 2 && python src/generar_alteraciones.py test 600 3
 ```
@@ -81,7 +82,9 @@ src/detector_caras.py        detector clásico (Haar con giros y perfiles)
 src/analisis_pixeles.py      revisor por reglas de píxeles (parte B, método principal)
 src/revisor.py               revisor entrenado (comparación)
 src/verificador.py           candidatas permisivas + HOG+SVM propio
-src/dividir_wider.py         división sin fuga (dHash)
+src/dividir_wider.py         división sin fuga de WIDER (dHash)
+src/dividir_openimages.py    división sin fuga del segundo dataset (Open Images)
+src/conjunto_principal.py    carga la «cara principal» de ambos datasets con cajas unificadas
 src/generar_alteraciones.py  imágenes con caras alteradas y su verdad exacta
 src/evaluar_caras.py         evaluación de detectores
 brief.md, bitacora.md        objetivo, reglas y registro de cada paso

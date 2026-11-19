@@ -53,3 +53,13 @@ Los hashes completos y los de las anotaciones están en el JSON. Si tu verificac
 | `ngoduy/dataset-for-face-detection` | 3,68 GB | desconocida | «WIDERFACE para train y test, FDDB para test, LFPW para landmarks» | **Descartado para detección**: repite WIDER (ya lo tenemos) y FDDB (nuestra prueba externa: sería fuga). LFPW podría servir luego para landmarks, pero la licencia es desconocida |
 
 Cautela con `fareselmenshawii`: la licencia CC0 es la que declara quien subió el mirror; las imágenes de Open Images tienen sus propias licencias (las anotaciones CC BY 4.0 según Google; las fotos, CC BY o similares). Para uso académico local no hay problema, pero no se redistribuyen. Antes de entrenar: descargarlo, contar imágenes y caras, ver tamaños de cara, calcular dHash contra WIDER y FDDB y registrar todo aquí; la elección es una decisión nueva.
+
+## 2026-11-19 · Segundo dataset elegido: Open Images (`fareselmenshawii/face-detection-dataset`) — D16
+Descargado en `entradas/faces-openimages` (4,6 GB). Inspección con `src/inspeccionar_openimages.py` (`datos/inspeccion_openimages.txt`; hashes en `datos/openimages_dhash.csv`):
+- **Contenido:** 16.733 imágenes (su división original: 13.386 train y 3.347 val; no la usamos), 51.846 caras, ninguna imagen sin caras. Dos formas de cajas: `labels/` (YOLO normalizado, por división original) y `labels2/` (píxeles `x1 y1 x2 y2` con el texto «Human face»; una carpeta para todo). El cargador usa `labels2/`.
+- **Caras por imagen:** 1: 7.260; 2: 3.564; 3: 1.753; 4: 1.168; 5: 808; 6 o más: 2.180.
+- **Tamaño de cara (alto en px):** mediana 85 (p10 27, p90 259); el 26,2 % mide menos de 48 px. La cara más grande por imagen: mediana 174 (p10 74, p90 415). Imágenes de ancho mediano 1.024 y alto 768.
+- **Para D13:** con ≤ 3 caras y la mayor ≥ 96 px hay 10.741 imágenes (≥ 48 px: 12.173); con exactamente 1 cara y ≥ 96 px, 6.291.
+- **Repetidos (dHash ≤ 6 bits):** 44 imágenes con otra casi igual dentro del propio dataset; 56 casi iguales a `wider-yolo`; 21 a `WIDER_val`; 64 a FDDB. Tratamiento en `src/dividir_openimages.py` (D16): 74 excluidas, 34 heredan división de WIDER, el resto agrupado y repartido: train 11.667, val 2.498, test 2.494 (`datos/division_openimages_resumen.txt`).
+- **Conjunto de la cara principal** (`src/conjunto_principal.py`, `datos/conjunto_principal_resumen.txt`): train 11.334 (WIDER 3.809 + Open Images 7.525), val 2.353, test 2.407.
+- **Pendiente:** SHA-256 de este dataset (añadirlo a `src/hashes_datos.py`); ver a ojo unas cuantas cajas para confirmar que son caras de frente y que no hay etiquetas raras.

@@ -1,0 +1,17 @@
+# Inspección de fareselmenshawii/face-detection-dataset (Open Images)
+Imágenes leídas: 16733 de 16733
+Por división original: {'train': 13386, 'val': 3347}
+Caras: 51846 en total; imágenes sin caras: 0
+Caras por imagen: 1:7260, 2:3564, 3:1753, 4:1168, 5:808, 6 o más:2180
+Alto de cualquier cara (px): p10=27, p25=46, p50=85, p75=154, p90=259; menores de 48 px: 26.2%
+Alto de la cara más grande por imagen (px): p10=74, p25=113, p50=174, p75=273, p90=415
+  imágenes con <= 1 caras y la mayor >= 48 px: 7022
+  imágenes con <= 1 caras y la mayor >= 96 px: 6291
+  imágenes con <= 3 caras y la mayor >= 48 px: 12173
+  imágenes con <= 3 caras y la mayor >= 96 px: 10741
+Tamaño de imagen: ancho mediano 1024, alto mediano 768
+Duplicados internos (dHash): 44 imágenes con otra casi igual dentro del mismo dataset
+Repetidos contra otros datasets:
+  contra wider-yolo (WIDER_train): 56 de 16733 imágenes casi iguales (<= 6 bits)
+  contra WIDER_val oficial: 21 de 16733 imágenes casi iguales (<= 6 bits)
+  contra FDDB: 64 de 16733 imágenes casi iguales (<= 6 bits)
