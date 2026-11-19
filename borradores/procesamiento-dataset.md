@@ -43,6 +43,8 @@ Por dataset: número de archivos, bytes y un hash de conjunto (SHA-256 de las l�
 | wider-yolo | 25.760 (12.880 imágenes + 12.880 etiquetas) | 2.759.633.019 | `170e10dc…42f492c7` |
 | wider-mksaad | 16.122 | 1.848.206.357 | `269d8f35…a6fbd25d` |
 | fddb | 28.205 (28.204 jpg + `label.txt`) | 550.576.110 | `40918c99…efc5fb46` |
+| openimages | 50.199 | 4.765.826.603 | `eeaa4438…1fc9960a` |
+| keypoints-fkd | 2 (`face_images.npz` + `facial_keypoints.csv`) | 521.234.420 | `f91de60a…404eaaea` |
 
 Los hashes completos y los de las anotaciones están en el JSON. Si tu verificación da «DIFIERE», tu descarga no es idéntica: no entrenes ni mides con ella hasta entender por qué.
 ### 3. Segundo dataset de entrenamiento: lo que dice Kaggle (sin descargar nada; los conteos reales exigen bajarlo)
@@ -62,4 +64,11 @@ Descargado en `entradas/faces-openimages` (4,6 GB). Inspección con `src/inspecc
 - **Para D13:** con ≤ 3 caras y la mayor ≥ 96 px hay 10.741 imágenes (≥ 48 px: 12.173); con exactamente 1 cara y ≥ 96 px, 6.291.
 - **Repetidos (dHash ≤ 6 bits):** 44 imágenes con otra casi igual dentro del propio dataset; 56 casi iguales a `wider-yolo`; 21 a `WIDER_val`; 64 a FDDB. Tratamiento en `src/dividir_openimages.py` (D16): 74 excluidas, 34 heredan división de WIDER, el resto agrupado y repartido: train 11.667, val 2.498, test 2.494 (`datos/division_openimages_resumen.txt`).
 - **Conjunto de la cara principal** (`src/conjunto_principal.py`, `datos/conjunto_principal_resumen.txt`): train 11.334 (WIDER 3.809 + Open Images 7.525), val 2.353, test 2.407.
-- **Pendiente:** SHA-256 de este dataset (añadirlo a `src/hashes_datos.py`); ver a ojo unas cuantas cajas para confirmar que son caras de frente y que no hay etiquetas raras.
+- SHA-256 de este dataset: hecho el 2026-11-19 (tabla de arriba). **Pendiente:** ver a ojo unas cuantas cajas para confirmar que son caras de frente y que no hay etiquetas raras.
+
+## 2026-11-19 · Facial Keypoints (landmarks, hito M1) — ficha
+- Qué: espejo de Kaggle `drgilermo/face-images-with-marked-landmark-points` (la competencia «Facial Keypoints Detection», datos de Yoshua Bengio, Univ. de Montreal). 7.049 caras de 96×96 en gris (`face_images.npz`, matriz 96×96×7049, valores 0–255) y `facial_keypoints.csv` (30 columnas = 15 puntos × (x, y); vacías cuando falta).
+- Licencia: «desconocida» en Kaggle; uso académico, no se redistribuye, nada al repo. (La competencia original exige aceptar sus reglas en el navegador; el espejo es público.)
+- Qué trae de verdad: los 15 puntos completos solo en 2.140 caras; centros de ojos ≈ 7.040; nariz 7.049; labio inferior 7.016; el resto ≈ 2.270 (ver E23). El `.npz` se guardó con Python 2 (aviso de numpy al leerlo; funciona).
+- Duplicados: ≈ 16 % de las imágenes tienen un gemelo exacto por dHash; por eso la división es por grupos (umbral 1 bit; el de 6 bits de WIDER encadena caras parecidas). `datos/division_keypoints.csv`.
+- Uso: `src/keypoints_datos.py` (`cargar`, `indices`, `dividir`, `piso`); resultados en E23; plan en `estrategia-landmarks.md`.

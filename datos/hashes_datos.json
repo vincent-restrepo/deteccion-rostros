@@ -24,5 +24,21 @@
   "anotaciones": {
    "Dataset_FDDB/label.txt": "cfbaaf5505ead6c484c7aed4a87610e8dd7d59c7c1d169eec88afd15bf46cd78"
   }
+ },
+ "openimages (fareselmenshawii/face-detection-dataset)": {
+  "carpeta": "entradas/faces-openimages",
+  "archivos": 50199,
+  "bytes": 4765826603,
+  "sha256_conjunto": "eeaa4438afbf1ede99871403330cab16271e52d5239e0ce3724d50991fc9960a",
+  "anotaciones": {}
+ },
+ "keypoints-fkd (drgilermo/face-images-with-marked-landmark-points)": {
+  "carpeta": "entradas/keypoints-fkd",
+  "archivos": 2,
+  "bytes": 521234420,
+  "sha256_conjunto": "f91de60aa008ac2480a2c805c49057f1ce08f96c63eb8f97e3808158404eaaea",
+  "anotaciones": {
+   "facial_keypoints.csv": "918b62662c9fa8e323ad3a00cb30bf233aa4da315d93ace7a6548ac80f4e75c0"
+  }
  }
 }

@@ -1,0 +1,6 @@
+Piso (forma media de train) medido en validación
+imágenes train 4935, val 1057; caras de val con los 4 puntos básicos: 1048
+NME (4 puntos básicos, distancia entre ojos): 0.148
+NME por punto: {'left_eye_center': 0.116, 'right_eye_center': 0.109, 'nose_tip': 0.179, 'mouth_center_bottom_lip': 0.186}
+RMSE en píxeles, todos los puntos disponibles: 3.91
+Distancia media entre ojos en val: 36.1 px (cara de 96×96)
