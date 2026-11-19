@@ -1,5 +1,5 @@
 """Ediciones que esconden una cara. Una sola fuente de verdad: las usan la app (parte A) y el generador de imágenes
-alteradas (parte B). Tipos de la parte B (el revisor los conoce): "desenfoque", "pixelado", "tapado". Además la app ofrece "ruido" y "colores" (reducción de colores); el revisor aún no los reconoce. Cada función edita la imagen en el lugar y devuelve la región
+alteradas (parte B). Tipos de la parte B (el revisor los conoce): "desenfoque", "pixelado", "tapado". Además la app ofrece "ruido" y "colores" (reducción de colores); el revisor v2 (REVISOR_V2=1) sí los reconoce; el v1 y las reglas de píxeles no. Cada función edita la imagen en el lugar y devuelve la región
 realmente modificada (x0, y0, x1, y1)."""
 import cv2, numpy as np
 

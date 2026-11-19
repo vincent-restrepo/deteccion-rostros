@@ -8,8 +8,10 @@ from multiprocessing import Pool
 
 V = 32; PASO = 16
 BLOQUES = (4, 6, 8, 12, 16, 24, 32, 48, 64)
-TIPOS = ("desenfoque", "pixelado", "tapado")
-MODELO = "modelos/revisor.pkl"
+TIPOS = ("desenfoque", "pixelado", "tapado", "ruido", "colores")   # los 3 primeros son los de la v1
+V2 = os.environ.get("REVISOR_V2") == "1"   # datos y modelo de la versión 2 (5 tipos, óvalos)
+MODELO = "modelos/revisor_v2.pkl" if V2 else "modelos/revisor.pkl"
+CARPETA = "datos/alteradas_v2" if V2 else "datos/alteradas"
 
 def _razon_bloque(dx, dy, b, caja_filtro):
     """Cuánto menor es la diferencia entre vecinos DENTRO de los bloques que EN sus bordes (cuadrícula alineada al (0,0)); ≈ 0 si hay pixelado de lado b."""
@@ -34,6 +36,12 @@ def rasgos_imagen(img):
     mapas = [np.log1p(caja(lap * lap)), np.log1p(caja(dx + dy)), caja(plano), np.log1p(np.sqrt(v))]
     razones = [_razon_bloque(dx, dy, b, caja) for b in BLOQUES]
     mapas += razones; mapas.append(np.min(razones, axis=0))
+    if V2:   # ruido (residuo frente a la mediana 3×3) y posterización (distancia a la rejilla de n niveles por canal, mejor n entre 2 y 6)
+        res = np.abs(g - cv2.medianBlur(g.astype(np.uint8), 3).astype(np.float32)); mapas.append(np.log1p(caja(res)))
+        c = img.astype(np.float32); post = []
+        for n in range(2, 7):
+            paso = 255.0 / (n - 1); post.append(caja(np.abs(c - np.round(c / paso) * paso).mean(axis=2)))
+        mapas.append(np.min(post, axis=0)); mapas.append(np.log1p(caja(np.abs(dx - dy))))
     ys = np.arange(V // 2, H - V // 2 + 1, PASO); xs = np.arange(V // 2, W - V // 2 + 1, PASO)
     if len(ys) == 0 or len(xs) == 0: return None, xs, ys
     F = np.stack([mp[np.ix_(ys, xs)] for mp in mapas], axis=-1)
@@ -45,7 +53,11 @@ def rasgos_imagen(img):
 def etiqueta_rejilla(shape, regiones, xs, ys):
     """1 = ventana completamente dentro de una región alterada; 0 = sin nada alterado; -1 = ambigua (se ignora al entrenar)."""
     H, W = shape[:2]; m = np.zeros((H, W), np.float32)
-    for r in regiones: m[r[1]:r[3], r[0]:r[2]] = 1
+    for r in regiones:
+        if isinstance(r, dict) and r.get("params", {}).get("forma") == "ovalo":
+            x0, y0, x1, y1 = r["region"]; cv2.ellipse(m, ((x0 + x1) // 2, (y0 + y1) // 2), (max(1, (x1 - x0) // 2), max(1, (y1 - y0) // 2)), 0, 0, 360, 1, -1)
+        else:
+            x0, y0, x1, y1 = r["region"] if isinstance(r, dict) else r; m[y0:y1, x0:x1] = 1
     fr = cv2.boxFilter(m, -1, (V, V), normalize=True, borderType=cv2.BORDER_REFLECT)[np.ix_(ys, xs)]
     return np.where(fr >= 0.99, 1, np.where(fr <= 0.0, 0, -1))
 
@@ -53,6 +65,17 @@ def rasgos_region(img, caja):
     """Rasgos de una región entera (para decidir el tipo)."""
     x0, y0, x1, y1 = caja; r = img[y0:y1, x0:x1]
     if r.shape[0] < 8 or r.shape[1] < 8: return None
+    if V2:   # los rasgos de contenido se miden en el centro (70 %), que en un óvalo sí está alterado; la cuadrícula sigue usando la caja entera
+        f0 = _rasgos_region(img, caja); h_, w_ = r.shape[:2]; cy0, cx0 = int(h_ * 0.15), int(w_ * 0.15); c = r[cy0:h_ - cy0, cx0:w_ - cx0]
+        if c.shape[0] < 4 or c.shape[1] < 4: c = r
+        g = cv2.cvtColor(c, cv2.COLOR_BGR2GRAY); res = np.abs(g.astype(np.float32) - cv2.medianBlur(g, 3).astype(np.float32)); cf = c.astype(np.float32)
+        post = min(np.abs(cf - np.round(cf / (255.0 / (n - 1))) * (255.0 / (n - 1))).mean() for n in range(2, 7))
+        lapc = cv2.Laplacian(g.astype(np.float32), cv2.CV_32F, ksize=1)
+        return None if f0 is None else np.concatenate([f0, np.array([np.log1p(res.mean()), post, np.log1p(lapc.var()), np.log(len({tuple(p) for p in (c.reshape(-1, 3) // 8)}) + 1), float(g.std()), len(np.unique(g)) / 256.0], np.float32)])
+    return _rasgos_region(img, caja)
+
+def _rasgos_region(img, caja):
+    x0, y0, x1, y1 = caja; r = img[y0:y1, x0:x1]
     g = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY).astype(np.float32); gr = g[y0:y1, x0:x1]
     lap = cv2.Laplacian(gr, cv2.CV_32F, ksize=1)
     dx = np.abs(gr[:, 1:] - gr[:, :-1]); dy = np.abs(gr[1:, :] - gr[:-1, :])
@@ -78,15 +101,15 @@ def procesar_entrenamiento(args):
     if img is None: return None
     F, xs, ys = rasgos_imagen(img)
     if F is None: return None
-    et = etiqueta_rejilla(img.shape, [r["region"] for r in regiones], xs, ys); rng = np.random.RandomState(abs(hash(ruta)) % 2**31)
+    et = etiqueta_rejilla(img.shape, regiones, xs, ys); rng = np.random.RandomState(abs(hash(ruta)) % 2**31)
     X1 = F[et == 1]; nat = F[et == 0]
     X0 = nat[rng.choice(len(nat), min(len(nat), n_nat), replace=False)] if len(nat) else nat
     reg = [(rasgos_region(img, tuple(r["region"])), TIPOS.index(r["tipo"])) for r in regiones]
     return X1, X0, [(f, t) for f, t in reg if f is not None]
 
 def cargar(div, n):
-    L = [json.loads(l) for l in open(f"datos/alteradas/{div}/etiquetas.jsonl")][:n]
-    for x in L: x["ruta"] = f"datos/alteradas/{div}/imgs/{x['archivo']}"
+    L = [json.loads(l) for l in open(f"{CARPETA}/{div}/etiquetas.jsonl")][:n]
+    for x in L: x["ruta"] = f"{CARPETA}/{div}/imgs/{x['archivo']}"
     return L
 
 def entrenar(n):
@@ -127,11 +150,11 @@ def _una(args):
     return x, revisar(cv2.imread(x["ruta"]), mod)
 
 def evaluar(div, n):
-    mod = pickle.load(open(MODELO, "rb")); L = cargar(div, n); t0 = time.time()
+    mod = pickle.load(open(MODELO, "rb")); L = cargar(div, n)[int(os.environ.get("REV_DESDE", 0)):]; UMB = float(os.environ.get("REV_UMBRAL", 0.5)); t0 = time.time()
     tp_loc = fp = fn = 0; tipo_ok = 0; por = {t: [0, 0, 0] for t in TIPOS}; conf = collections.Counter(); sin_ed_con_alarma = sin_ed = 0
     from concurrent.futures import ThreadPoolExecutor
     for x in L:
-        pred = revisar(cv2.imread(x["ruta"]), mod); gt = x["regiones"]; usado = set()
+        pred = revisar(cv2.imread(x["ruta"]), mod, UMB); gt = x["regiones"]; usado = set()
         for p in pred:
             m = [(iou(p["region"], g["region"]), j) for j, g in enumerate(gt) if j not in usado]
             if m and max(m)[0] >= 0.5:
@@ -156,7 +179,7 @@ if __name__ == "__main__":
     if c == "entrenar": entrenar(int(sys.argv[2]) if len(sys.argv) > 2 else 3000)
     elif c == "evaluar": evaluar(sys.argv[2], int(sys.argv[3]) if len(sys.argv) > 3 else 600)
     elif c == "ver":
-        mod = pickle.load(open(MODELO, "rb")); img = cv2.imread(sys.argv[2]); col = {"desenfoque": (0, 200, 255), "pixelado": (0, 255, 0), "tapado": (255, 0, 255)}
+        mod = pickle.load(open(MODELO, "rb")); img = cv2.imread(sys.argv[2]); col = {"desenfoque": (0, 200, 255), "pixelado": (0, 255, 0), "tapado": (255, 0, 255), "ruido": (255, 128, 0), "colores": (0, 0, 255)}
         for r in revisar(img, mod):
             a, b, c2, d = r["region"]; cv2.rectangle(img, (a, b), (c2, d), col[r["tipo"]], 3); cv2.putText(img, r["tipo"], (a, max(18, b - 6)), 0, 0.8, col[r["tipo"]], 2); print(r)
         cv2.imwrite("salidas_demo/revision.jpg", img)

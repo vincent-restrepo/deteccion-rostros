@@ -1,11 +1,13 @@
 """Genera imágenes con caras alteradas (datos de la parte B). Parte de WIDER según datos/division_wider.csv (sin fuga),
 aplica ediciones al azar a caras de >= 48 px de alto (D1) y guarda la verdad exacta: región, tipo y parámetros.
 Salida: datos/alteradas/<division>/imgs/*.jpg y datos/alteradas/<division>/etiquetas.jsonl (las imágenes no van a git).
-Uso:  .venv/bin/python src/generar_alteraciones.py <train|val|test> <N> [semilla]"""
+Versión 2 (cuarto argumento «v2»): los 5 tipos de la app (suma ruido y reducción de colores) y la mitad de las ediciones en óvalo; salida en datos/alteradas_v2/.
+Uso:  .venv/bin/python src/generar_alteraciones.py <train|val|test> <N> [semilla] [v2]"""
 import sys, os, csv, json, random
 import cv2, numpy as np
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from ediciones import editar, TIPOS
+TIPOS5 = TIPOS + ("ruido", "colores"); P_OVALO = 0.4
 MIN_ALTO = 48; BLOQUES = (4, 6, 8, 12, 16, 24, 32, 48, 64); P_SIN_EDITAR = 0.15; P_CARA = 0.6
 
 def caras(ruta_img, W, H):
@@ -23,11 +25,11 @@ def iou(a, b):
     return i / u if u else 0
 
 if __name__ == "__main__":
-    div, n = sys.argv[1], int(sys.argv[2]); sem = int(sys.argv[3]) if len(sys.argv) > 3 else 1
+    div, n = sys.argv[1], int(sys.argv[2]); sem = int(sys.argv[3]) if len(sys.argv) > 3 else 1; v2 = len(sys.argv) > 4 and sys.argv[4] == "v2"
     from rutas import exigir; exigir("datos/division_wider.csv", "Primero: python src/dividir_wider.py (ver README.md)."); exigir("entradas/wider-yolo/images", "Descarga WIDER: ver README.md, sección «Datos».")
     rng = random.Random(sem)
     rutas = [r["ruta"] for r in csv.DictReader(open("datos/division_wider.csv")) if r["division"] == div]
-    rng.shuffle(rutas); carpeta = f"datos/alteradas/{div}"; os.makedirs(f"{carpeta}/imgs", exist_ok=True)
+    rng.shuffle(rutas); carpeta = f"datos/alteradas{'_v2' if v2 else ''}/{div}"; os.makedirs(f"{carpeta}/imgs", exist_ok=True)
     sal = open(f"{carpeta}/etiquetas.jsonl", "w"); hechas = 0
     for ruta in rutas:
         if hechas >= n: break
@@ -39,9 +41,12 @@ if __name__ == "__main__":
         editar_img = rng.random() > P_SIN_EDITAR
         for c in cs:
             if not editar_img or rng.random() > P_CARA: sin.append(list(c)); continue
-            tipo = rng.choice(TIPOS); prm = {"margen": round(rng.uniform(0.0, 0.35), 3)}
+            tipo = rng.choice(TIPOS5 if v2 else TIPOS); prm = {"margen": round(rng.uniform(0.0, 0.35), 3)}
+            if v2 and rng.random() < P_OVALO: prm["forma"] = "ovalo"
             if tipo == "pixelado": prm["bloque"] = rng.choice(BLOQUES)
             elif tipo == "desenfoque": prm["fuerza"] = round(rng.uniform(0.4, 2.0), 3)
+            elif tipo == "ruido": prm["ruido"] = rng.randint(30, 100)
+            elif tipo == "colores": prm["niveles"] = rng.randint(2, 6)
             else: prm["color"] = rng.choice([(0, 0, 0), (255, 255, 255), tuple(int(v) for v in im[max(0,c[1]):c[1]+c[3], max(0,c[0]):c[0]+c[2]].reshape(-1, 3).mean(0)), tuple(rng.randint(0, 255) for _ in range(3))])
             reg = editar(salida, c, tipo, **prm)
             if reg is None or any(iou(reg, r["region"]) > 0.3 for r in regiones): continue

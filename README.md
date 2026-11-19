@@ -56,6 +56,7 @@ python src/descargar_kaggle.py lylmsc/wider-face-for-yolo-training=entradas/wide
 python src/descargar_kaggle.py fareselmenshawii/face-detection-dataset=entradas/faces-openimages   # Open Images, segundo dataset (4,6 GB)
 python src/dividir_wider.py                    # división sin fuga → datos/division_wider.csv (ya viene en el repo)
 python src/generar_alteraciones.py train 3000 1 && python src/generar_alteraciones.py val 600 2 && python src/generar_alteraciones.py test 600 3
+# versión 2 (5 tipos + óvalos): añade «v2» a cada comando; el revisor la usa con REVISOR_V2=1
 ```
 
 `datos/division_wider.csv` ya está versionado (la misma división para todos). Las 4.200 imágenes alteradas se generan en `datos/alteradas/` (≈ 600 MB, fuera de git).
