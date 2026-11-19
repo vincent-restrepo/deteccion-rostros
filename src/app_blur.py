@@ -1,4 +1,4 @@
-"""Interfaz local: video a la izquierda, panel de casillas a la derecha. Hoy solo caras (Haar clásico, con cabezas inclinadas y perfiles).
+"""Interfaz local: video a la izquierda, panel de casillas a la derecha. Solo caras: detector combinado de la cara principal (E15) si están los modelos, y Haar con cabezas inclinadas y perfiles como apoyo.
 Uso:  .venv/bin/python src/app_blur.py [--fuente 0|archivo.mp4|foto.jpg] [--puerto 8765]
 Abre http://localhost:8765. Sin dependencias extra: servidor http.server + video MJPEG.
 Las capturas se guardan en salidas_demo/ (solo local, fuera de git)."""
@@ -20,6 +20,8 @@ ANCHO_DET = 960             # frontal y perfil se buscan a este ancho; a 480 se 
 ANCHO_GIROS = 480           # los giros (lo más caro) se prueban solo a este ancho: las cabezas inclinadas cercanas son grandes
 FPS_MAX = 20                # tope de cuadros por segundo del video mostrado
 HILOS = 3                   # hilos que puede usar OpenCV (para no calentar el equipo)
+ANCHO_FUSION = 800          # el detector combinado (E14/E15) se midió a este ancho
+FRONTAL_FUSION = None       # función de detección frontal del detector combinado, o None para usar Haar (se decide al arrancar)
 INTERVALO = 0.4             # segundos mínimos entre detecciones (≈ 2,5 por segundo): cada una cuesta ≈ 0,3 s de procesador (E8)
 
 ESTADO = {"esconder": True, "modo": "desenfoque", "bloque": 16, "fuerza": 1.0, "color": "negro", "ruido": 80, "niveles": 3,
@@ -100,11 +102,15 @@ def hilo_deteccion():
         H, W = frame.shape[:2]; esc = min(1.0, ANCHO_DET / W)
         gris = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         g1 = cv2.resize(gris, (int(W * esc), int(H * esc)), interpolation=cv2.INTER_AREA)
-        items = [(tuple(int(v / esc) for v in c), 0) for c in alta(g1)]      # frontal, sin ecualizar (E3)
-        if vuelta % 2 == 0 or not items:                                       # giros: cada 2 vueltas, a baja resolución
+        if FRONTAL_FUSION is not None:                                          # detector combinado (E15): cara principal, hasta 3 cajas
+            ef = min(1.0, ANCHO_FUSION / W); gf = cv2.resize(gris, (int(W * ef), int(H * ef)), interpolation=cv2.INTER_AREA)
+            items = [(tuple(int(v / ef) for v in c), 0) for c in FRONTAL_FUSION(gf)]
+        else: items = [(tuple(int(v / esc) for v in c), 0) for c in alta(g1)]  # frontal Haar, sin ecualizar (E3)
+        solo_respaldo = FRONTAL_FUSION is not None                              # con el detector combinado, giros y perfil de Haar solo si no encontró ninguna cara
+        if (not items) if solo_respaldo else (vuelta % 2 == 0 or not items):   # giros: cada 2 vueltas (o solo de respaldo), a baja resolución
             e2 = min(1.0, ANCHO_GIROS / W); g2 = cv2.resize(gris, (int(W * e2), int(H * e2)), interpolation=cv2.INTER_AREA)
             items += [(tuple(int(v / e2) for v in c), 0) for c in giros(g2)]
-        if vuelta % 3 == 0:                                                    # perfil: cada 3 vueltas
+        if (vuelta % 3 == 0) and not (solo_respaldo and items):                # perfil: cada 3 vueltas (no si ya hay caras y hay detector combinado)
             items += [(tuple(int(v / esc) for v in c), 0) for c in perfil(g1)]
         dets = [c for c, _ in _nms(items)]
         cajas = [tuple(p.caja) for p in seg.actualizar(dets)]
@@ -270,8 +276,15 @@ class H(BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(); ap.add_argument("--fuente", default="0"); ap.add_argument("--puerto", type=int, default=8765)
+    ap.add_argument("--detector", choices=["fusion", "haar"], default="fusion", help="fusion: detector combinado (E15, hace falta el modelo); haar: el anterior")
+    ap.add_argument("--modelo", default="modelos/fusion_rapido.pkl"); ap.add_argument("--umbral", type=float, default=0.1, help="0,1 = modo privacidad (E14); 0,2 = menos falsos positivos")
     a = ap.parse_args(); fuente = int(a.fuente) if a.fuente.isdigit() else a.fuente
     ESTADO["fuente"] = str(fuente)
+    if a.detector == "fusion":
+        if os.path.exists(a.modelo) and os.path.exists("modelos/hogsvm_cara.npz"):
+            from detector_fusion import cargar_detector; FRONTAL_FUSION = cargar_detector(a.umbral, a.modelo); print(f"Detector combinado: {a.modelo}, umbral {a.umbral}", flush=True)
+        else: print("AVISO: faltan los modelos del detector combinado (modelos/); uso Haar. Cómo entrenarlos: README.md, sección «Detector de la cara principal».", flush=True)
+    else: print("Detector Haar (--detector haar)", flush=True)
     threading.Thread(target=bucle, args=(fuente,), daemon=True).start()
     srv = ThreadingHTTPServer(("127.0.0.1", a.puerto), H)   # solo local: no se expone a la red
     print(f"Listo en http://localhost:{a.puerto}  (Ctrl+C para salir)", flush=True)

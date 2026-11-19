@@ -9,7 +9,7 @@ from concurrent.futures import ProcessPoolExecutor
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import hog_svm_cara as hs, detector_fusion as df
 from conjunto_principal import cargar
-CACHE = "datos/cache_fusion.pkl"; AUSENTE = df.AUSENTE; FUENTES = df.FUENTES
+CACHE = os.environ.get("CACHE_FUSION", "datos/cache_fusion.pkl"); AUSENTE = df.AUSENTE; FUENTES = df.FUENTES
 
 def _cands(m):
     g, cajas, _ = hs.cargar_img(m)
@@ -37,10 +37,10 @@ if __name__ == "__main__":
         _, _, resto = hs.partir_train(); rng = random.Random(1); ent = []
         for d in ("wider", "openimages"):
             xs = [m for m in resto if m["dataset"] == d]; rng.shuffle(xs); ent += xs[:n]
-        val = cargar("val"); t0 = time.time()
+        val = cargar("val") if nv > 0 else []; t0 = time.time()   # val_por_dataset = 0: solo entrenamiento (para entrenar los modelos; la ablación necesita validación)
         with ProcessPoolExecutor() as ex:
             e = [x for x in ex.map(_cands, ent, chunksize=4) if x]; print(f"entrenamiento: {len(e)} ({time.time() - t0:.0f} s)", flush=True)
-            v = [x for x in ex.map(_cands, val, chunksize=4) if x]; print(f"validación: {len(v)} ({time.time() - t0:.0f} s)", flush=True)
+            v = [x for x in ex.map(_cands, val, chunksize=4) if x] if val else []; print(f"validación: {len(v)} ({time.time() - t0:.0f} s)", flush=True)
             muestra = random.Random(3).sample(ent, 40); ts = [t for t in ex.map(_tiempos, muestra)]
         tiempos = {k: round(float(np.mean([t[k] for t in ts[5:]])), 3) for k in ts[0]}   # se descartan las 5 primeras (carga de modelos)
         pickle.dump({"entrenamiento": e, "validacion": v, "tiempos": tiempos}, open(CACHE, "wb")); print("segundos por fuente:", tiempos)
