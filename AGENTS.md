@@ -19,7 +19,7 @@ Estás ayudando a una persona del equipo en este repositorio. Léelo completo an
 
 ## 1. El proyecto en cuatro líneas
 
-- **Parte A:** app web local (`src/app_blur.py`) que detecta muchas caras y las esconde (desenfoque, pixelado, tapado sólido, ruido, reducción de colores).
+- **Parte A:** app web local (`src/app_blur.py`) que detecta la cara principal (1 a 3 caras, D13) y las esconde (desenfoque, pixelado, tapado sólido, ruido, reducción de colores).
 - **Parte B:** revisor que, dada una imagen guardada, dice dónde se alteró una cara y de qué tipo (`src/analisis_pixeles.py` por reglas de píxeles; `src/revisor.py` entrenado, solo como comparación).
 - **Regla del curso: todo menos deep learning.** Prohibido, aunque venga preentrenado: YOLO, SSD, DNN de OpenCV (res10), YuNet, MediaPipe/BlazeFace, MTCNN, dlib CNN, embeddings tipo FaceNet, cualquier red neuronal. Permitido: Haar, HOG+SVM (incluido el detector HOG de dlib), LBP, k-NN, árboles, bosques, boosting (AdaBoost, `opencv_traincascade`), geometría, Fourier. «Formato YOLO» solo se refiere a cómo vienen escritas las cajas (texto), no a usar el modelo.
 - **Prioridad de privacidad:** un falso negativo (cara visible) es peor que un falso positivo (tapar de más).
@@ -58,7 +58,9 @@ python src/descargar_kaggle.py faizanarif15/dataset-fddb=entradas/fddb
 
 Para lo básico basta el primero. El segundo y el tercero hacen falta solo para la evaluación final y para «dejar un dataset fuera».
 
-**Cuántas caras cuentan:** solo las de **48 px de alto o más** (D1). En WIDER el 81 % de las caras es más pequeño: quedan fuera de alcance, no suman recall ni su acierto cuenta como falso positivo. Los scripts ya aplican esa regla; si escribes uno nuevo, aplícala igual.
+**Enfoque nuevo (D13, 2026-11-19): la cara principal.** Se entrena y se evalúa para detectar muy bien la cara que está al frente (imágenes con 1 a 3 caras, la mayor de ≥ 96 px, umbral por confirmar); no importan las caras del fondo. Reporta siempre las dos reglas (la de abajo y la nueva) y no compares cifras de una con la otra. La regla de D1 sigue vigente para las cifras ya medidas:
+
+**Cuántas caras cuentan (regla D1):** solo las de **48 px de alto o más** (D1). En WIDER el 81 % de las caras es más pequeño: quedan fuera de alcance, no suman recall ni su acierto cuenta como falso positivo. Los scripts ya aplican esa regla; si escribes uno nuevo, aplícala igual.
 
 **Segundo dataset de entrenamiento:** D2 pide entrenar con WIDER más otro dataset, pero todavía **no se eligió**. Candidatos sin verificar (solo vistos por título en Kaggle): `fareselmenshawii/face-detection-dataset`, `freak2209/face-data`, `ngoduy/dataset-for-face-detection`. Si vas a usar uno: descárgalo, ábrelo, registra en `borradores/procesamiento-dataset.md` el conteo de imágenes y caras, el formato de las cajas, la licencia y los tamaños de cara, y propón la elección como una decisión nueva antes de entrenar con él.
 

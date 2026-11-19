@@ -29,6 +29,7 @@ Ver `borradores/procesamiento-dataset.md`. Antecedente: el proyecto anterior (re
 
 ## Pendiente
 - Tamaño mínimo de cara en alcance (recomendación: 48 px de alto).
+- **Enfoque desde 2026-11-19 (D13):** detectar muy bien la cara principal (1 a 3 caras, la mayor de ≥ 96 px, por confirmar); las caras del fondo ya no son objetivo.
 - Datasets de desarrollo, prueba final y «dejar uno fuera».
 
 ## Material para la presentación

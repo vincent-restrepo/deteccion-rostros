@@ -4,7 +4,7 @@ Proyecto final de Visión por Computador (Universidad Nacional). Solo visión cl
 
 Dos partes:
 
-- **A · App que esconde caras.** Abre la cámara, un video o una foto, detecta **muchas caras** y las esconde con desenfoque, pixelado, tapado sólido, ruido o reducción de colores, con un slider de intensidad por filtro. Corre en tu computador y solo escucha en `127.0.0.1`: el video nunca sale de tu máquina.
+- **A · App que esconde caras.** Abre la cámara, un video o una foto, detecta la **cara principal** (1 a 3 caras; ver D13: las del fondo no son el objetivo) y las esconde con desenfoque, pixelado, tapado sólido, ruido o reducción de colores, con un slider de intensidad por filtro. Corre en tu computador y solo escucha en `127.0.0.1`: el video nunca sale de tu máquina.
 - **B · Revisor de imágenes alteradas.** Dada una imagen guardada, dice **dónde** se alteró una cara y **de qué tipo** (desenfoque, pixelado, tapado), analizando los píxeles.
 
 Antes de tocar nada, lee `brief.md` (objetivo y reglas) y `borradores/decisiones.md` (qué se decidió y por qué). **Si trabajas con un asistente de IA (Claude Code, Codex, Cursor…), él lee `AGENTS.md`**: ahí están las reglas, los datasets que hay que descargar y el protocolo para entrenar y evaluar.
