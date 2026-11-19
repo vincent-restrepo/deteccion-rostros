@@ -1,0 +1,5 @@
+segundos por fuente: {'dlib': 0.253, 'dlib_clahe': 0.26, 'dlib_espejo': 0.266, 'dlib_rot': 0.264, 'haar': 0.075, 'hogsvm': 0.047}
+dlib+haar+hogsvm+haar_perfil+extra {"0.2": {"wider": {"recall_principal": 0.77, "fp_por_imagen": 0.205}, "openimages": {"recall_principal": 0.768, "fp_por_imagen": 0.198}}, "0.1": {"wider": {"recall_principal": 0.79, "fp_por_imagen": 0.387}, "openimages": {"recall_principal": 0.779, "fp_por_imagen": 0.328}}}
+dlib+haar+hogsvm+haar_perfil+extra+corr {"0.2": {"wider": {"recall_principal": 0.775, "fp_por_imagen": 0.174}, "openimages": {"recall_principal": 0.781, "fp_por_imagen": 0.178}}, "0.1": {"wider": {"recall_principal": 0.791, "fp_por_imagen": 0.305}, "openimages": {"recall_principal": 0.792, "fp_por_imagen": 0.288}}}
+dlib+dlib_clahe+dlib_espejo+dlib_rot_mas+dlib_rot_menos+haar+hogsvm+haar_perfil+dlib_pad+dlib_rot_90+dlib_rot_270+extra+corr {"0.2": {"wider": {"recall_principal": 0.802, "fp_por_imagen": 0.157}, "openimages": {"recall_principal": 0.798, "fp_por_imagen": 0.173}}, "0.1": {"wider": {"recall_principal": 0.817, "fp_por_imagen": 0.275}, "openimages": {"recall_principal": 0.809, "fp_por_imagen": 0.292}}}
+FIN

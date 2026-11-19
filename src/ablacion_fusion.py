@@ -21,9 +21,10 @@ def _nuevas(d):
     return df.candidatas(g, set(df.NUEVAS)) if g is not None else []
 
 def _grupos(args):
-    d, usar = args; g, _, _ = hs.cargar_img({"ruta": d["ruta"], "cajas": []})
+    d, usar = args[0], args[1]; tabla = args[2] if len(args) > 2 else None; g, _, _ = hs.cargar_img({"ruta": d["ruta"], "cajas": []})
     if g is None: return None
     c = [x for x in d["cands"] if x[1] in usar]
+    if tabla: c = df.corregir(c, tabla)
     return df.agrupar(c, g, "extra" in usar, df.ORDEN) if c else []   # «extra» en la variante = rasgos nuevos (E16)
 
 def _tiempos(m):
@@ -60,7 +61,8 @@ if __name__ == "__main__":
         res = {}
         with ProcessPoolExecutor() as ex:
             for nombre, usar in variantes.items():
-                ge = list(ex.map(_grupos, [(d, usar) for d in E], chunksize=8)); gv = list(ex.map(_grupos, [(d, usar) for d in V], chunksize=8))
+                tb = df.cargar_correccion() if "corr" in usar else None
+                ge = list(ex.map(_grupos, [(d, usar, tb) for d in E], chunksize=8)); gv = list(ex.map(_grupos, [(d, usar, tb) for d in V], chunksize=8))
                 X = []; y = []
                 for d, gr in zip(E, ge):
                     for caja, f in gr or []: X.append(f); y.append(int(max((hs.iou(caja, c) for c in d["cajas"]), default=0) >= 0.5))
@@ -92,13 +94,22 @@ if __name__ == "__main__":
                 for d, n in zip(lista, nuevas): d["cands"] = [c for c in d["cands"] if c[1] not in df.NUEVAS] + (n or [])
                 print(ruta, clave, len(lista), f"({time.time() - t0:.0f} s)", flush=True)
             pickle.dump(z, open(ruta, "wb"))
+    elif modo == "correccion":   # ablacion_fusion.py correccion : mide en ENTRENAMIENTO el sesgo de caja de cada fuente y lo guarda en datos/correccion_cajas.json
+        E = pickle.load(open(os.environ.get("CACHE_ENTRENAMIENTO", CACHE), "rb"))["entrenamiento"]; est = {}
+        for d in E:
+            pr = max(d["cajas"], key=lambda c: c[3])
+            for c, f, s in d["cands"]:
+                if hs.iou(c, pr) >= 0.4: est.setdefault(f, []).append(((c[0] + c[2] / 2 - (pr[0] + pr[2] / 2)) / pr[3], (c[1] + c[3] / 2 - (pr[1] + pr[3] / 2)) / pr[3], c[2] / pr[2], c[3] / pr[3]))
+        tabla = {f: [round(float(x), 4) for x in np.mean(v, axis=0)] for f, v in est.items()}
+        json.dump(tabla, open(df.RUTA_CORRECCION, "w"), indent=1); print("escrito", df.RUTA_CORRECCION, {f: (v, len(est[f])) for f, v in tabla.items()})
     elif modo == "modelo":   # ablacion_fusion.py modelo fuente1+fuente2 modelos/salida.pkl : entrena con el caché y guarda el segundo paso con su lista de fuentes
         import joblib; from sklearn.ensemble import HistGradientBoostingClassifier
         usar = set(sys.argv[2].split("+")); E = pickle.load(open(CACHE, "rb"))["entrenamiento"]
-        with ProcessPoolExecutor() as ex: ge = list(ex.map(_grupos, [(d, usar) for d in E], chunksize=8))
+        tb = df.cargar_correccion() if "corr" in usar else None
+        with ProcessPoolExecutor() as ex: ge = list(ex.map(_grupos, [(d, usar, tb) for d in E], chunksize=8))
         X = []; y = []
         for d, gr in zip(E, ge):
             for caja, f in gr or []: X.append(f); y.append(int(max((hs.iou(caja, c) for c in d["cajas"]), default=0) >= 0.5))
         clf = HistGradientBoostingClassifier(max_iter=500, learning_rate=0.05, early_stopping=True, validation_fraction=0.15, n_iter_no_change=20, random_state=1).fit(np.array(X), np.array(y))
-        joblib.dump({"clf": clf, "fuentes": sorted(usar - {"extra"}), "extra": "extra" in usar, "orden_fuentes": list(df.ORDEN)}, sys.argv[3]); print(f"guardado {sys.argv[3]} con {sorted(usar)}; árboles {clf.n_iter_}; grupos {len(y)}")
+        joblib.dump({"clf": clf, "fuentes": sorted(usar - {"extra", "corr"}), "extra": "extra" in usar, "orden_fuentes": list(df.ORDEN), "correccion": tb}, sys.argv[3]); print(f"guardado {sys.argv[3]} con {sorted(usar)}; árboles {clf.n_iter_}; grupos {len(y)}")
     else: sys.exit(__doc__)

@@ -67,12 +67,13 @@ Los modelos no vienen en el repo (`modelos/` está en `.gitignore`). Con los dat
 ```bash
 python src/hog_svm_cara.py entrenar 3000 1500 2 1                                   # HOG+SVM propio (2 min) → modelos/hogsvm_cara.npz
 python src/ablacion_fusion.py cache 1000 0                                          # candidatas de 2.000 imágenes de entrenamiento con las 11 fuentes (≈ 10 min)
-python src/ablacion_fusion.py modelo dlib+haar+hogsvm+haar_perfil+extra modelos/fusion_rapido.pkl           # versión rápida (la de la app)
-python src/ablacion_fusion.py modelo dlib+dlib_espejo+haar+hogsvm+haar_perfil+extra modelos/fusion_equilibrado.pkl
-python src/ablacion_fusion.py modelo dlib+dlib_clahe+dlib_espejo+dlib_rot_mas+dlib_rot_menos+haar+hogsvm+haar_perfil+dlib_pad+dlib_rot_90+dlib_rot_270+extra modelos/fusion_completo.pkl
+python src/ablacion_fusion.py correccion                                           # sesgo de caja de cada fuente (datos/correccion_cajas.json; ya viene en el repo)
+python src/ablacion_fusion.py modelo dlib+haar+hogsvm+haar_perfil+extra+corr modelos/fusion_rapido.pkl           # versión rápida (la de la app)
+python src/ablacion_fusion.py modelo dlib+dlib_espejo+haar+hogsvm+haar_perfil+extra+corr modelos/fusion_equilibrado.pkl
+python src/ablacion_fusion.py modelo dlib+dlib_clahe+dlib_espejo+dlib_rot_mas+dlib_rot_menos+haar+hogsvm+haar_perfil+dlib_pad+dlib_rot_90+dlib_rot_270+extra+corr modelos/fusion_completo.pkl
 ```
 
-Medir: `python src/evaluar_principal.py val 5000 1 fusionrapido_t0.2` (también `fusioneq_t0.2` y `fusioncompleto_t0.2`; toda la validación; ver `borradores/experimentos.md`, E12–E17). **No uses `test`** hasta la evaluación final.
+Medir: `python src/evaluar_principal.py val 5000 1 fusionrapido_t0.2` (también `fusioneq_t0.2` y `fusioncompleto_t0.2`; toda la validación; ver `borradores/experimentos.md`, E12–E18). **No uses `test`** hasta la evaluación final.
 
 ## 4. Experimentos y evaluación
 

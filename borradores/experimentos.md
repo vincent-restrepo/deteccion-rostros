@@ -165,3 +165,22 @@ E1, E2, … con configuración y resultado. (Los resultados E1, E3, E5 y E6 del 
 
 **Lectura:** la mejor mejora por lo que cuesta es el Haar de perfil (+1,4 y +2,5 puntos por ≈ 0,06 s). Frente a dlib −0,4, la versión rápida gana **+6,7 y +9 puntos** de recall con menos falsos positivos. El borde reflejado y las rotaciones de 90° casi no sirven en el conjunto de la cara principal (se dejan en la versión completa). Queda ≈ 1 de cada 4 caras principales sin encontrar (parte son etiquetas ruidosas).
 **Límites:** modelos y umbrales escogidos con la misma validación (optimismo pequeño); error estadístico ≈ ±1,5 puntos; `test` sin tocar; no se probó con cámara real; las cifras de segundos de `evaluar_principal.py` salen ~3 veces mayores por la competencia entre procesos (los de la tabla son de un solo proceso). Durante la medición aparecieron dos errores de código míos (un choque de nombres y la compatibilidad con modelos viejos) que se corrigieron antes de las cifras finales.
+
+## E18 · 2026-11-19 · Corrección de cajas aprendida por fuente
+**Pregunta:** ¿hay caras principales que sí se encuentran pero con la caja mal ajustada (IoU < 0,5), y se puede corregir?
+**Hallazgo previo (solo mirando el caché de validación):** el 6,6 % de las caras principales tiene como mejor candidata una con IoU entre 0,3 y 0,5 (encontrada pero mal ajustada) y otro 3,9 % entre 0,1 y 0,3. Las cajas tienen un **sesgo sistemático**: las de dlib salen ≈ 1,09× más anchas y ≈ 0,82× más bajas que la etiqueta y ≈ 0,05 alturas más abajo; las de Haar de perfil, ≈ 1,4× más anchas. Es igual en WIDER y Open Images y en entrenamiento y validación (las etiquetas tienen proporción ancho/alto de 0,74–0,78; los detectores dan cajas casi cuadradas).
+**Método:** `src/ablacion_fusion.py correccion` mide, **solo en entrenamiento**, para cada fuente el desplazamiento del centro y el cociente caja/etiqueta de ancho y alto (candidatas con IoU ≥ 0,4 con la cara principal) y lo guarda en `datos/correccion_cajas.json` (versionado: son 11 filas de números, sin imágenes). `detector_fusion.corregir()` rehace cada caja antes de agrupar. La tabla se guarda dentro de cada modelo. Se reentrena el segundo paso con las cajas corregidas. Logs: `borradores/e18-*.log`.
+**Resultado en caché (validación completa, umbral 0,2; recall de la cara principal / falsos positivos por imagen, WIDER · Open Images):** versión rápida sin corrección 0,770 / 0,20 · 0,768 / 0,20; con corrección 0,775 / 0,17 · 0,781 / 0,18. Las 11 fuentes: 0,781 / 0,19 · 0,790 / 0,20 → 0,802 / 0,16 · 0,798 / 0,17.
+**Versiones finales (detector real, validación completa; tiempo en un solo proceso):**
+
+| Versión | WIDER | Open Images | Tiempo |
+|---|---|---|---|
+| Rápida, umbral 0,2 | 0,771 / 0,18 | 0,776 / 0,18 | 0,34 s |
+| **Rápida, umbral 0,1 (la de la app)** | 0,784 / 0,30 | 0,788 / 0,28 | 0,34 s |
+| Equilibrada, umbral 0,2 | 0,784 / 0,18 | 0,789 / 0,18 | 0,54 s |
+| Completa (11 fuentes), umbral 0,2 | **0,806** / 0,16 | **0,795** / 0,17 | 1,88 s |
+| (E17, rápida sin corrección, umbral 0,2) | 0,765 / 0,22 | 0,765 / 0,20 | 0,36 s |
+| (dlib −0,4, referencia) | 0,698 / 0,35 | 0,675 / 0,23 | 0,19 s |
+
+**Lectura:** la corrección sube el recall unos +0,5 a +2 puntos y **baja los falsos positivos** (menos cajas «casi bien» contadas como error), sin costo de tiempo. Frente a dlib −0,4, la versión rápida gana **+7 y +11 puntos** de recall con la mitad de falsos positivos o menos. Ya se encuentran ≈ 4 de cada 5 caras principales; el techo de candidatas (0,897 / 0,873) deja poco margen más sin fuentes nuevas.
+**Límites:** la tabla viene del conjunto de entrenamiento de 2.000 imágenes; modelos y umbrales escogidos con la misma validación; error estadístico ≈ ±1,5 puntos; `test` sin tocar; sin cámara real. Para que los equipos no lo olviden: **si cambias las fuentes, repite `correccion` y reentrena** (la tabla y el modelo van juntos).

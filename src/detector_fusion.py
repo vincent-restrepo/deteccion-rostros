@@ -54,6 +54,22 @@ def candidatas(g, usar=None):
         for v, p in hs.predecir(g, c["w"], c["b"], -0.5)[:15]: out.append((hs.cara_de_ventana(v), "hogsvm", p))
     return out
 
+RUTA_CORRECCION = "datos/correccion_cajas.json"
+
+def cargar_correccion(ruta=RUTA_CORRECCION):
+    import json
+    return json.load(open(ruta)) if os.path.exists(ruta) else {}
+
+def corregir(cands, tabla):
+    """E18: las cajas de los detectores son casi cuadradas y las etiquetas más altas que anchas. Para cada fuente, tabla[fuente] = [dx, dy, fw, fh]
+    (medidos en entrenamiento: desplazamiento del centro en alturas de la etiqueta y cociente caja/etiqueta de ancho y alto). Devuelve las candidatas con la caja corregida."""
+    out = []
+    for (x, y, w, h), f, s in cands:
+        dx, dy, fw, fh = tabla.get(f, (0.0, 0.0, 1.0, 1.0)); lh = h / fh; lw = w / fw
+        cx, cy = x + w / 2 - dx * lh, y + h / 2 - dy * lh
+        out.append(((int(cx - lw / 2), int(cy - lh / 2), int(lw), int(lh)), f, s))
+    return out
+
 def agrupar(cands, g, extra=False, fuentes=FUENTES):
     """Une candidatas solapadas (IoU > 0,4) y devuelve (caja, vector de rasgos) por grupo."""
     c = _recursos(); H, W = g.shape; grupos = []
@@ -95,8 +111,10 @@ def cargar_detector(umbral=0.5, ruta=RUTA, max_caras=MAX_CARAS):
     import joblib; obj = joblib.load(ruta)
     clf, usar = (obj["clf"], set(obj["fuentes"])) if isinstance(obj, dict) else (obj, set(FUENTES))   # modelos viejos (E14): solo sus 7 fuentes
     extra = bool(obj.get("extra", False)) if isinstance(obj, dict) else False; orden = tuple(obj.get("orden_fuentes", FUENTES)) if isinstance(obj, dict) else FUENTES
+    tabla = obj.get("correccion") if isinstance(obj, dict) else None   # tabla de corrección de cajas guardada con el modelo (E18), o None
     def det(g):
-        gr = agrupar(candidatas(g, usar), g, extra, orden)
+        cs = candidatas(g, usar); cs = corregir(cs, tabla) if tabla else cs
+        gr = agrupar(cs, g, extra, orden)
         if not gr: return []
         p = clf.predict_proba(np.array([f for _, f in gr]))[:, 1]
         ranking = sorted(zip(p, [c for c, _ in gr]), key=lambda t: -t[0])
