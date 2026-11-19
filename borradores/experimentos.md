@@ -66,3 +66,27 @@ E1, E2, … con configuración y resultado. (Los resultados E1, E3, E5 y E6 del 
 - Lectura: (1) la mayor ganancia viene de bajar el umbral de dlib (recall 0,478 → 0,552, precisión 0,955 → 0,808), no de la segunda etapa; (2) el SVM propio sube el recall unos 0,04 más a cambio de precisión (F1 ≈ 0,64–0,66, igual que dlib permisivo solo: 0,656), así que como filtro no aporta mucho más que «dlib permisivo»; (3) el techo es el recall de las candidatas (0,63): lo que ningún detector propone, no lo rescata el filtro. Para subirlo hay que mejorar el origen (más resolución, giros, perfiles) y no el filtro.
 - Límites: una sola muestra de 300 imágenes (comparaciones con E7 son de muestras distintas); WIDER es difícil (poses extremas, oclusión); no se midió el efecto en vivo. Prueba: sin tocar.
 - Siguiente paso propuesto: usar dlib con umbral bajo (y el resto de candidatas como respaldo) en la app y comprobarlo con capturas reales.
+
+## E12 · 2026-11-19 · Detectores clásicos sobre la «cara principal» (D13), por dataset
+**Pregunta:** ¿qué tan bien encuentran hoy los detectores que ya tenemos la cara principal (la más grande, ≥ 96 px), en imágenes con 1 a 3 caras, y a qué costo?
+**Método:** `src/evaluar_principal.py val 400 1 …`: 400 imágenes de validación de cada dataset (semilla 1) del conjunto de `conjunto_principal.py`; imágenes reducidas a 800 px de ancho; IoU ≥ 0,5; las caras etiquetadas de < 48 px no cuentan como falso positivo. Detectores sin entrenar con nuestros datos. Salida cruda: `borradores/e12-bruto.log`. **Prueba distinta a E7/E11 (regla de D1): no se comparan las cifras.**
+**Resultado (recall de la cara principal / falsos positivos por imagen / precisión / segundos por imagen):**
+
+| Detector | WIDER | Open Images |
+|---|---|---|
+| Haar frontal | 0,583 / 0,36 / 0,69 / 0,34 s | 0,532 / 0,33 / 0,70 / 0,26 s |
+| Haar con giros y perfil | 0,603 / 1,66 / 0,34 / 3,5 s | 0,647 / 1,40 / 0,39 / 2,7 s |
+| dlib HOG ×0 | 0,660 / 0,03 / 0,97 / 0,05 s | 0,605 / 0,04 / 0,95 / 0,04 s |
+| dlib HOG ×1 | 0,652 / 0,05 / 0,95 / 0,20 s | 0,605 / 0,07 / 0,92 / 0,16 s |
+| dlib HOG ×2 | 0,655 / 0,10 / 0,90 / 0,81 s | 0,608 / 0,15 / 0,85 / 0,67 s |
+| dlib HOG ×1, umbral −0,4 | **0,725** / 0,28 / 0,78 / 0,20 s | **0,675** / 0,21 / 0,82 / 0,16 s |
+| dlib HOG ×2, umbral −0,4 | 0,720 / 0,49 / 0,67 / 0,80 s | 0,682 / 0,48 / 0,67 / 0,67 s |
+
+**Qué se ve:**
+- Ningún detector clásico encuentra la cara principal más de ~73 % (WIDER) y ~68 % (Open Images) de las veces: **faltan 3 de cada 10 caras grandes**. Ahí está el margen de mejora.
+- Bajar el umbral de dlib (−0,4) sube el recall ≈ 6–7 puntos a cambio de más falsos positivos (0,2–0,3 por imagen). Subir la escala (×2) casi no ayuda y cuesta 4 veces más tiempo.
+- dlib ×0 con umbral por defecto es el más limpio y rápido (precisión 0,95–0,97; 0,05 s), pero pierde más caras.
+- Haar con giros y perfil es inusable: 1,4–1,7 falsos positivos por imagen y 3–3,5 s por imagen.
+- Open Images sale algo peor que WIDER con dlib (caras más variadas); que las cifras sean parecidas indica que el conjunto nuevo no es trivialmente más fácil.
+**Límites:** 400 imágenes por dataset: el error estadístico del recall es de unos ±2,5 puntos (1 desviación), así que diferencias de 1–2 puntos no significan nada. Un solo corte de validación y una semilla. No se probó con webcam.
+**Siguiente:** entrenar un HOG+SVM propio sobre este conjunto con negativos difíciles y compararlo con `dlib ×1, umbral −0,4` (el mejor hasta ahora).
