@@ -1,0 +1,4 @@
+# Conjunto «cara principal» (D13): 1 a 3 caras y la mayor >= 96 px de alto
+train: 11334 imágenes  {'wider': 3809, 'openimages': 7525}  caras por imagen {1: 7044, 2: 2956, 3: 1334}
+val: 2353 imágenes  {'wider': 804, 'openimages': 1549}  caras por imagen {1: 1433, 2: 655, 3: 265}
+test: 2407 imágenes  {'wider': 800, 'openimages': 1607}  caras por imagen {1: 1439, 2: 663, 3: 305}
