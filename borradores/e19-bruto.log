@@ -1,0 +1,11 @@
+CONFIG max_leaf_nodes=15
+dlib+haar+hogsvm+haar_perfil+extra+corr {"0.2": {"wider": {"recall_principal": 0.777, "fp_por_imagen": 0.198}, "openimages": {"recall_principal": 0.78, "fp_por_imagen": 0.186}}, "0.1": {"wider": {"recall_principal": 0.795, "fp_por_imagen": 0.343}, "openimages": {"recall_principal": 0.795, "fp_por_imagen": 0.313}}}
+CONFIG max_leaf_nodes=63
+dlib+haar+hogsvm+haar_perfil+extra+corr {"0.2": {"wider": {"recall_principal": 0.767, "fp_por_imagen": 0.163}, "openimages": {"recall_principal": 0.779, "fp_por_imagen": 0.154}}, "0.1": {"wider": {"recall_principal": 0.785, "fp_por_imagen": 0.266}, "openimages": {"recall_principal": 0.787, "fp_por_imagen": 0.247}}}
+CONFIG l2_regularization=1.0,min_samples_leaf=50
+dlib+haar+hogsvm+haar_perfil+extra+corr {"0.2": {"wider": {"recall_principal": 0.777, "fp_por_imagen": 0.179}, "openimages": {"recall_principal": 0.779, "fp_por_imagen": 0.175}}, "0.1": {"wider": {"recall_principal": 0.79, "fp_por_imagen": 0.323}, "openimages": {"recall_principal": 0.791, "fp_por_imagen": 0.285}}}
+CONFIG learning_rate=0.1,max_depth=6
+dlib+haar+hogsvm+haar_perfil+extra+corr {"0.2": {"wider": {"recall_principal": 0.777, "fp_por_imagen": 0.185}, "openimages": {"recall_principal": 0.781, "fp_por_imagen": 0.185}}, "0.1": {"wider": {"recall_principal": 0.79, "fp_por_imagen": 0.333}, "openimages": {"recall_principal": 0.792, "fp_por_imagen": 0.295}}}
+CONFIG learning_rate=0.03,max_iter=1000,n_iter_no_change=40
+dlib+haar+hogsvm+haar_perfil+extra+corr {"0.2": {"wider": {"recall_principal": 0.776, "fp_por_imagen": 0.18}, "openimages": {"recall_principal": 0.782, "fp_por_imagen": 0.176}}, "0.1": {"wider": {"recall_principal": 0.791, "fp_por_imagen": 0.313}, "openimages": {"recall_principal": 0.793, "fp_por_imagen": 0.291}}}
+FIN

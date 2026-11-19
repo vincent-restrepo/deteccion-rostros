@@ -9,6 +9,8 @@ from concurrent.futures import ProcessPoolExecutor
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import hog_svm_cara as hs, detector_fusion as df
 from conjunto_principal import cargar
+HGB = dict(max_iter=500, learning_rate=0.05, early_stopping=True, validation_fraction=0.15, n_iter_no_change=20, random_state=1)
+for _kv in filter(None, os.environ.get("HGB", "").split(",")): _k, _v = _kv.split("="); HGB[_k] = (None if _v == "None" else float(_v) if "." in _v else int(_v) if _v.lstrip("-").isdigit() else _v)   # HGB="max_leaf_nodes=63,l2_regularization=1.0" cambia los hiperparámetros del segundo paso (E19)
 CACHE = os.environ.get("CACHE_FUSION", "datos/cache_fusion.pkl"); AUSENTE = df.AUSENTE; FUENTES = df.FUENTES
 
 def _cands(m):
@@ -66,7 +68,7 @@ if __name__ == "__main__":
                 X = []; y = []
                 for d, gr in zip(E, ge):
                     for caja, f in gr or []: X.append(f); y.append(int(max((hs.iou(caja, c) for c in d["cajas"]), default=0) >= 0.5))
-                clf = HistGradientBoostingClassifier(max_iter=500, learning_rate=0.05, early_stopping=True, validation_fraction=0.15, n_iter_no_change=20, random_state=1).fit(np.array(X), np.array(y))
+                clf = HistGradientBoostingClassifier(**HGB).fit(np.array(X), np.array(y))
                 fila = {}
                 for umbral in (0.2, 0.1):
                     r = {"wider": [0, 0, 0], "openimages": [0, 0, 0]}   # principal acertada, fp, imágenes
@@ -110,6 +112,6 @@ if __name__ == "__main__":
         X = []; y = []
         for d, gr in zip(E, ge):
             for caja, f in gr or []: X.append(f); y.append(int(max((hs.iou(caja, c) for c in d["cajas"]), default=0) >= 0.5))
-        clf = HistGradientBoostingClassifier(max_iter=500, learning_rate=0.05, early_stopping=True, validation_fraction=0.15, n_iter_no_change=20, random_state=1).fit(np.array(X), np.array(y))
+        clf = HistGradientBoostingClassifier(**HGB).fit(np.array(X), np.array(y))
         joblib.dump({"clf": clf, "fuentes": sorted(usar - {"extra", "corr"}), "extra": "extra" in usar, "orden_fuentes": list(df.ORDEN), "correccion": tb}, sys.argv[3]); print(f"guardado {sys.argv[3]} con {sorted(usar)}; árboles {clf.n_iter_}; grupos {len(y)}")
     else: sys.exit(__doc__)

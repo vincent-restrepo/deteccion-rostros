@@ -184,3 +184,10 @@ E1, E2, … con configuración y resultado. (Los resultados E1, E3, E5 y E6 del 
 
 **Lectura:** la corrección sube el recall unos +0,5 a +2 puntos y **baja los falsos positivos** (menos cajas «casi bien» contadas como error), sin costo de tiempo. Frente a dlib −0,4, la versión rápida gana **+7 y +11 puntos** de recall con la mitad de falsos positivos o menos. Ya se encuentran ≈ 4 de cada 5 caras principales; el techo de candidatas (0,897 / 0,873) deja poco margen más sin fuentes nuevas.
 **Límites:** la tabla viene del conjunto de entrenamiento de 2.000 imágenes; modelos y umbrales escogidos con la misma validación; error estadístico ≈ ±1,5 puntos; `test` sin tocar; sin cámara real. Para que los equipos no lo olviden: **si cambias las fuentes, repite `correccion` y reentrena** (la tabla y el modelo van juntos).
+
+## E19 · 2026-11-19 · Hiperparámetros del segundo paso (resultado negativo)
+**Pregunta:** ¿el segundo paso (`HistGradientBoostingClassifier`) mejora cambiando sus hiperparámetros?
+**Método:** `HGB="…" src/ablacion_fusion.py medir dlib+haar+hogsvm+haar_perfil+extra+corr` sobre el caché (2.000 imágenes de entrenamiento; validación completa). Cinco configuraciones frente a la de referencia (hojas por defecto, tasa 0,05, parada temprana). Log: `borradores/e19-bruto.log`.
+**Resultado (umbral 0,2, recall de la cara principal / falsos positivos, WIDER · Open Images):** referencia 0,775 / 0,17 · 0,781 / 0,18; 15 hojas 0,777 · 0,780; 63 hojas 0,767 · 0,779; regularización L2 y hojas mínimas 0,777 · 0,779; tasa 0,1 y profundidad 6: 0,777 · 0,781; tasa 0,03 y más iteraciones: 0,776 · 0,782. Con umbral 0,1 las diferencias son iguales de pequeñas (0,785–0,795).
+**Lectura:** ninguna configuración supera a la de referencia por más que el error estadístico (≈ ±1,5 puntos). **El segundo paso ya no depende de sus hiperparámetros**; lo que queda por ganar está en las candidatas, los rasgos o las etiquetas ruidosas. Se conserva la configuración por defecto.
+**Límites:** una sola semilla; seis configuraciones comparadas en la misma validación; no se probó otro tipo de modelo (bosque aleatorio, regresión logística) ni calibración de probabilidades.

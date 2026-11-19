@@ -9,7 +9,7 @@ import cv2, numpy as np
 from concurrent.futures import ProcessPoolExecutor
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from conjunto_principal import cargar
-ANCHO = 800; MIN_SEC = 48
+ANCHO = int(os.environ.get("ANCHO_EVAL", 800)); MIN_SEC = 48   # ANCHO_EVAL: ancho de trabajo en píxeles (E20)
 _det = {}
 
 def iou(a, b):
