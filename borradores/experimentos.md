@@ -90,3 +90,25 @@ E1, E2, … con configuración y resultado. (Los resultados E1, E3, E5 y E6 del 
 - Open Images sale algo peor que WIDER con dlib (caras más variadas); que las cifras sean parecidas indica que el conjunto nuevo no es trivialmente más fácil.
 **Límites:** 400 imágenes por dataset: el error estadístico del recall es de unos ±2,5 puntos (1 desviación), así que diferencias de 1–2 puntos no significan nada. Un solo corte de validación y una semilla. No se probó con webcam.
 **Siguiente:** entrenar un HOG+SVM propio sobre este conjunto con negativos difíciles y compararlo con `dlib ×1, umbral −0,4` (el mejor hasta ahora).
+
+## E13 · 2026-11-19 · HOG+SVM propio con minado de negativos difíciles (cara principal)
+**Pregunta:** ¿un detector HOG+SVM entrenado por nosotros con WIDER + Open Images supera a dlib?
+**Método:** `src/hog_svm_cara.py entrenar 3000 1500 2 1`: ventana 64×64 (HOG 9 orientaciones, celdas de 8 px), positivos = caras ≥ 48 px con 12,5 % de margen y su espejo (7.580), negativos = ventanas sin cara (23.999 al inicio), SVM lineal (C = 0,01), 2 rondas de minado de falsos positivos sobre 1.500 imágenes de entrenamiento distintas. Umbral escogido en una muestra de validación (semilla 2, 300 por dataset). Logs: `borradores/e13-entrenamiento.log`, `borradores/e13-umbral-bruto.log`.
+**Resultado:** el minado se agotó: ronda 1 → 29.944 falsos positivos nuevos; ronda 2 → solo 375 (54.318 negativos al final). En validación, el umbral 0 da recall de la cara principal 0,523 (WIDER) / 0,487 (Open Images) con precisión 0,84 / 0,90; el umbral −0,25 llega a 0,683 / 0,653 pero con 1,3–1,7 falsos positivos por imagen. **No supera a dlib** (0,725 / 0,675 con 0,2–0,3 falsos positivos).
+**Lectura:** un solo filtro de 64×64 entrenado con ~3.000 imágenes no alcanza a un detector entrenado con muchos más datos y varias vistas. Sirve como fuente de candidatas del detector combinado (E14), no como detector final. No se probó con más datos, otro tamaño de ventana ni otro C.
+
+## E14 · 2026-11-19 · Detector combinado: varias fuentes + árboles con parada temprana + tope de 3 cajas
+**Pregunta:** ¿se puede subir el recall de la cara principal sin disparar los falsos positivos combinando fuentes clásicas?
+**Método:** `src/detector_fusion.py`. Candidatas de 7 fuentes (dlib HOG con umbral −1 sobre la imagen normal, con CLAHE, espejada y rotada ±15°; Haar frontal; HOG+SVM de E13), agrupadas por solapamiento (IoU > 0,4). Segundo paso: `HistGradientBoostingClassifier` (árboles con boosting) con **parada temprana** (128 de 500 árboles), 14 rasgos por grupo (puntaje por fuente, número de fuentes, puntaje del HOG+SVM sobre el grupo, tamaño y posición relativos, proporción). Entrenado con 2.000 imágenes de entrenamiento que E13 no vio (47.416 grupos; 2.448 caras). Tope de 3 cajas por imagen (D13). Umbrales (0,2 y 0,1) escogidos en una muestra de validación (semilla 2, 300 por dataset); medición final en **toda** la validación (804 WIDER + 1.549 Open Images). Logs: `borradores/e14-*.log`.
+**Resultado (recall de la cara principal / recall de secundarias / falsos positivos por imagen / precisión / s por imagen):**
+
+| Detector | WIDER (804) | Open Images (1.549) |
+|---|---|---|
+| dlib HOG ×0 | 0,629 / 0,446 / 0,04 / 0,95 / 0,06 | 0,602 / 0,466 / 0,05 / 0,94 / 0,05 |
+| dlib HOG ×1, umbral −0,4 (mejor de E12) | 0,698 / 0,607 / 0,35 / 0,73 / 0,25 | 0,675 / 0,589 / 0,23 / 0,81 / 0,21 |
+| **Combinado, umbral 0,2** | **0,756** / 0,646 / 0,18 / 0,85 / 1,9 | **0,750** / 0,624 / 0,17 / 0,86 / 1,6 |
+| **Combinado, umbral 0,1 (modo privacidad)** | **0,775** / 0,670 / 0,33 / 0,76 / 2,0 | **0,759** / 0,645 / 0,29 / 0,79 / 1,7 |
+
+**Lectura:** el combinado con umbral 0,2 gana 6–7 puntos de recall de la cara principal contra el mejor dlib **y** tiene menos falsos positivos; con umbral 0,1 gana más recall al mismo costo en falsos positivos. El error estadístico es de ≈ ±1,5 puntos (WIDER) y ±1,1 (Open Images), así que la ganancia es real. Aun así faltan ~1 de cada 4 caras principales.
+**Límites:** los umbrales se escogieron en una muestra que forma parte de la validación (optimismo pequeño: se eligieron 2 valores); **no se ha tocado `test`**. Es lento: 1,6–2 s por imagen en 10 procesos (la app necesita ≈ 0,4 s). No se midió qué fuente aporta cuánto. No se probó con webcam.
+**Siguiente:** quitar las fuentes que menos aportan para acelerar, mirar las caras que siguen fallando (lentes, perfiles, tamaño) y probar rasgos nuevos en el segundo paso.

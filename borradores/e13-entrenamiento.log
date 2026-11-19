@@ -1,0 +1,8 @@
+imágenes para positivos/negativos: 3000; para minar: 1500
+positivos 7580, negativos iniciales 23999 (6 s)
+ronda 0: 7580 positivos, 23999 negativos; exactitud de entrenamiento 0.950 (10 s)
+  falsos positivos minados: 29944
+ronda 1: 7580 positivos, 53943 negativos; exactitud de entrenamiento 0.938 (52 s)
+  falsos positivos minados: 375
+ronda 2: 7580 positivos, 54318 negativos; exactitud de entrenamiento 0.933 (92 s)
+guardado modelos/hogsvm_cara.npz

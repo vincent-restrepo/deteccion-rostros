@@ -3,7 +3,7 @@ Reporta, POR DATASET: recall de la cara principal (IoU >= 0,5), recall de las ca
 precisión y segundos por imagen. Una predicción que acierta una cara etiquetada de < 48 px se ignora (no es falso positivo), igual que en D1.
 Es otra prueba que la de D1 (src/evaluar_caras.py): no compares las cifras entre una y otra.
 Uso:  .venv/bin/python src/evaluar_principal.py <train|val> <N por dataset> <semilla> [detectores separados por coma]
-Detectores: haar_0grados, giros_y_perfil, dlib_x0, dlib_x1, dlib_x2, dlib_x1_t-0.4, dlib_x2_t-0.4.   (la división «test» no se usa aquí: es la prueba final)"""
+Detectores: haar_0grados, giros_y_perfil, dlib_x0, dlib_x1, dlib_x2, dlib_x1_t-0.4, dlib_x2_t-0.4, hogsvm_t<umbral> (modelo propio de src/hog_svm_cara.py), fusion_t<umbral> (src/detector_fusion.py).   (la división «test» no se usa aquí: es la prueba final)"""
 import sys, os, json, time, random, collections
 import cv2, numpy as np
 from concurrent.futures import ProcessPoolExecutor
@@ -29,6 +29,12 @@ def detector(nombre):
         import dlib
         d = dlib.get_frontal_face_detector(); sube = int(nombre[6]); umbral = float(nombre.split("_t")[1]) if "_t" in nombre else 0.0
         f = lambda g: [(max(0, r.left()), max(0, r.top()), r.width(), r.height()) for r in d.run(g, sube, umbral)[0]]
+    elif nombre.startswith("hogsvm_t"):
+        from hog_svm_cara import cargar_detector
+        f = cargar_detector(float(nombre[8:]))
+    elif nombre.startswith("fusion_t"):
+        from detector_fusion import cargar_detector as cf
+        f = cf(float(nombre[8:]))
     else: raise SystemExit("Detector desconocido: " + nombre)
     _det[nombre] = f; return f
 
