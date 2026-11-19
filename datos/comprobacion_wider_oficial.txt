@@ -1,0 +1,3 @@
+# Comprobación WIDER oficial (mksaad) contra wider-yolo (dHash 9x8, casi igual = <= 6 bits)
+WIDER_val: 3226 imágenes; 19 casi iguales a alguna de wider-yolo (2 con distancia 0); por división de wider-yolo: {'train': 10, 'test': 5, 'val': 4}
+WIDER_train: 12880 imágenes; 12880 casi iguales a alguna de wider-yolo (12509 con distancia 0); por división de wider-yolo: {'test': 1932, 'val': 1932, 'train': 9016}

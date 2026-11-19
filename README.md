@@ -65,6 +65,8 @@ Todos miden con la regla de alcance (caras de 48 px de alto o más) y el protoco
 |---|---|
 | Detectores de caras (E7) | `python src/evaluar_caras.py 300 1 haar_0grados,giros_y_perfil,dlib_hog_x1,dlib_hog_x2,fusion` |
 | Segunda etapa HOG+SVM (E11) | `python src/verificador.py extraer val 300 2 && python src/verificador.py extraer train 1500 1 && python src/verificador.py evaluar` |
+| Verificar tu descarga (SHA-256) | `python src/hashes_datos.py verificar` |
+| ¿`WIDER_val` repite imágenes de entrenamiento? | `python src/comprobar_wider_oficial.py` |
 | Revisor por reglas de píxeles (E10) | `python src/analisis_pixeles.py evaluar val 300` y `python src/analisis_pixeles.py ver imagen.jpg` |
 | Revisor entrenado, comparación (E9) | `python src/revisor.py entrenar 1500 && python src/revisor.py evaluar val 300` |
 

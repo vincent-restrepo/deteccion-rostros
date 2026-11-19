@@ -1,0 +1,28 @@
+{
+ "wider-yolo (lylmsc/wider-face-for-yolo-training)": {
+  "carpeta": "entradas/wider-yolo",
+  "archivos": 25760,
+  "bytes": 2759633019,
+  "sha256_conjunto": "170e10dcf513e9e33cd3910d98d3b3a6cebc391dcce91e9c8954f9fc42f492c7",
+  "anotaciones": {}
+ },
+ "wider-mksaad (mksaad/wider-face-a-face-detection-benchmark)": {
+  "carpeta": "entradas/wider-mksaad",
+  "archivos": 16122,
+  "bytes": 1848206357,
+  "sha256_conjunto": "269d8f3571abfbed5c79dd045979c2792aca98460e2df9ee88a2e74ca6fbd25d",
+  "anotaciones": {
+   "wider_face_split/wider_face_split/wider_face_train_bbx_gt.txt": "0f09628087512e3a530fc8cc6a7e0056da277a1a7654690f0732c181aa01e2a3",
+   "wider_face_split/wider_face_split/wider_face_val_bbx_gt.txt": "1334686fc7612437699131d1e08fb0b42bbd6a452a111433840abfa0b80d7e98"
+  }
+ },
+ "fddb (faizanarif15/dataset-fddb)": {
+  "carpeta": "entradas/fddb",
+  "archivos": 28205,
+  "bytes": 550576110,
+  "sha256_conjunto": "40918c9961d499741b25a5d2c9aca10293200eef96b81759ed578277efc5fb46",
+  "anotaciones": {
+   "Dataset_FDDB/label.txt": "cfbaaf5505ead6c484c7aed4a87610e8dd7d59c7c1d169eec88afd15bf46cd78"
+  }
+ }
+}
