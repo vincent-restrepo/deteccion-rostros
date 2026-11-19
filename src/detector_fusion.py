@@ -24,18 +24,22 @@ def _dlib(g):
     r, s, idx = _recursos()["dlib"].run(g, 1, UMBRAL_DLIB)
     return [((max(0, a.left()), max(0, a.top()), a.width(), a.height()), float(sc)) for a, sc in zip(r, s)]
 
-def candidatas(g):
-    """Lista de (caja, fuente, puntaje) en coordenadas de g."""
-    c = _recursos(); H, W = g.shape; out = [(b, "dlib", s) for b, s in _dlib(g)]
-    out += [(b, "dlib_clahe", s) for b, s in _dlib(c["clahe"].apply(g))]
-    out += [((W - b[0] - b[2], b[1], b[2], b[3]), "dlib_espejo", s) for b, s in _dlib(cv2.flip(g, 1))]
+def candidatas(g, usar=None):
+    """Lista de (caja, fuente, puntaje) en coordenadas de g. `usar`: conjunto de fuentes a calcular (None = todas); las demás no se calculan."""
+    c = _recursos(); H, W = g.shape; ok = lambda n: usar is None or n in usar; out = []
+    if ok("dlib"): out += [(b, "dlib", s) for b, s in _dlib(g)]
+    if ok("dlib_clahe"): out += [(b, "dlib_clahe", s) for b, s in _dlib(c["clahe"].apply(g))]
+    if ok("dlib_espejo"): out += [((W - b[0] - b[2], b[1], b[2], b[3]), "dlib_espejo", s) for b, s in _dlib(cv2.flip(g, 1))]
     for ang, nombre in ((15, "dlib_rot_mas"), (-15, "dlib_rot_menos")):
+        if not ok(nombre): continue
         M = cv2.getRotationMatrix2D((W / 2, H / 2), ang, 1.0); inv = cv2.invertAffineTransform(M)
         for b, s in _dlib(cv2.warpAffine(g, M, (W, H))):
             cx, cy = b[0] + b[2] / 2, b[1] + b[3] / 2; ox, oy = inv @ np.array([cx, cy, 1.0])
             out.append(((int(ox - b[2] / 2), int(oy - b[3] / 2), b[2], b[3]), nombre, s))
-    for r in c["haar"].detectMultiScale(g, 1.1, 3, minSize=(40, 40)): out.append((tuple(int(v) for v in r), "haar", 1.0))
-    for v, p in hs.predecir(g, c["w"], c["b"], -0.5)[:15]: out.append((hs.cara_de_ventana(v), "hogsvm", p))
+    if ok("haar"):
+        for r in c["haar"].detectMultiScale(g, 1.1, 3, minSize=(40, 40)): out.append((tuple(int(v) for v in r), "haar", 1.0))
+    if ok("hogsvm"):
+        for v, p in hs.predecir(g, c["w"], c["b"], -0.5)[:15]: out.append((hs.cara_de_ventana(v), "hogsvm", p))
     return out
 
 def agrupar(cands, g):
@@ -61,9 +65,10 @@ def _una(args):
     return [(f, int(max((hs.iou(caja, c) for c in cajas), default=0) >= 0.5)) for caja, f in agrupar(candidatas(g), g)]
 
 def cargar_detector(umbral=0.5, ruta=RUTA, max_caras=MAX_CARAS):
-    import joblib; clf = joblib.load(ruta)
+    import joblib; obj = joblib.load(ruta)
+    clf, usar = (obj["clf"], set(obj["fuentes"])) if isinstance(obj, dict) else (obj, None)   # modelos viejos: todas las fuentes
     def det(g):
-        gr = agrupar(candidatas(g), g)
+        gr = agrupar(candidatas(g, usar), g)
         if not gr: return []
         p = clf.predict_proba(np.array([f for _, f in gr]))[:, 1]
         orden = sorted(zip(p, [c for c, _ in gr]), key=lambda t: -t[0])

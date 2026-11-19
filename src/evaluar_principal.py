@@ -32,9 +32,9 @@ def detector(nombre):
     elif nombre.startswith("hogsvm_t"):
         from hog_svm_cara import cargar_detector
         f = cargar_detector(float(nombre[8:]))
-    elif nombre.startswith("fusion_t"):
+    elif nombre.startswith("fusion"):
         from detector_fusion import cargar_detector as cf
-        f = cf(float(nombre[8:]))
+        base, u = nombre.split("_t"); f = cf(float(u), {"fusion": "modelos/fusion.pkl", "fusionrapido": "modelos/fusion_rapido.pkl", "fusioneq": "modelos/fusion_equilibrado.pkl"}[base])
     else: raise SystemExit("Detector desconocido: " + nombre)
     _det[nombre] = f; return f
 

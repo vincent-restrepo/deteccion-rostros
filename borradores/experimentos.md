@@ -112,3 +112,30 @@ E1, E2, … con configuración y resultado. (Los resultados E1, E3, E5 y E6 del 
 **Lectura:** el combinado con umbral 0,2 gana 6–7 puntos de recall de la cara principal contra el mejor dlib **y** tiene menos falsos positivos; con umbral 0,1 gana más recall al mismo costo en falsos positivos. El error estadístico es de ≈ ±1,5 puntos (WIDER) y ±1,1 (Open Images), así que la ganancia es real. Aun así faltan ~1 de cada 4 caras principales.
 **Límites:** los umbrales se escogieron en una muestra que forma parte de la validación (optimismo pequeño: se eligieron 2 valores); **no se ha tocado `test`**. Es lento: 1,6–2 s por imagen en 10 procesos (la app necesita ≈ 0,4 s). No se midió qué fuente aporta cuánto. No se probó con webcam.
 **Siguiente:** quitar las fuentes que menos aportan para acelerar, mirar las caras que siguen fallando (lentes, perfiles, tamaño) y probar rasgos nuevos en el segundo paso.
+
+## E15 · 2026-11-19 · Ablación del detector combinado y versiones rápida y equilibrada
+**Pregunta:** ¿qué fuente de candidatas aporta de verdad, y se puede acelerar el detector de E14 (1–2 s por imagen) sin perder recall?
+**Método:** `src/ablacion_fusion.py`. Se guardan una vez las candidatas de 2.000 imágenes de entrenamiento (las que E13 no vio) y de toda la validación (2.353) en `datos/cache_fusion.pkl` (fuera de git). Para cada subconjunto de fuentes se reagrupa, se reentrena el segundo paso (árboles con parada temprana, igual que E14) y se mide en validación: recall de la cara principal y falsos positivos por imagen, con tope de 3 cajas. Después, dos versiones se miden de punta a punta con `evaluar_principal.py`. Logs: `borradores/e15-*.log`.
+**Tiempo por fuente (s por imagen de 800 px):** cada pasada de dlib ≈ 0,25–0,27 (hay cinco: normal, CLAHE, espejo, rotación +15°, −15°); Haar 0,08; HOG+SVM 0,05.
+**Ablación (umbral 0,2; recall de la cara principal / falsos positivos por imagen; WIDER · Open Images):**
+
+| Fuentes | WIDER | Open Images |
+|---|---|---|
+| Todas (E14) | 0,755 / 0,17 | 0,749 / 0,17 |
+| Sin una fuente cualquiera (siete pruebas) | 0,746–0,762 / 0,15–0,18 | 0,733–0,748 / 0,16–0,19 |
+| dlib + espejo + HOG+SVM | 0,752 / 0,21 | 0,745 / 0,19 |
+| dlib + Haar + HOG+SVM | 0,749 / 0,16 | 0,726 / 0,18 |
+| dlib normal + HOG+SVM | 0,740 / 0,19 | 0,716 / 0,19 |
+| **Solo dlib normal** (con árboles y tope de 3) | 0,724 / 0,17 | 0,704 / 0,18 |
+
+**Versiones (medición de punta a punta en toda la validación; tiempo en un solo proceso):**
+
+| Versión | Fuentes | WIDER | Open Images | Tiempo |
+|---|---|---|---|---|
+| Rápida (`modelos/fusion_rapido.pkl`) | dlib + Haar + HOG+SVM | 0,746 / 0,18 | 0,726 / 0,18 | **0,30 s** |
+| Equilibrada (`modelos/fusion_equilibrado.pkl`) | dlib + espejo + HOG+SVM | 0,754 / 0,20 | 0,745 / 0,18 | 0,42 s |
+| Completa (`modelos/fusion.pkl`) | las siete | 0,756 / 0,18 | 0,750 / 0,17 | 1,02 s |
+| dlib −0,4 (referencia) | — | 0,698 / 0,35 | 0,675 / 0,23 | 0,19 s |
+
+**Lectura:** (1) Ninguna fuente es imprescindible: quitar cualquiera cuesta menos de 1,5 puntos (dentro del error estadístico). (2) **Gran parte de la mejora viene del segundo paso y del tope de 3 cajas, no de las fuentes extra**: solo dlib normal con árboles ya supera a dlib −0,4 solo, con la mitad de falsos positivos. (3) La versión rápida cabe en el presupuesto de la app (≈ 0,4 s por detección) y gana 4–5 puntos de recall frente a dlib −0,4 con la mitad de falsos positivos.
+**Límites:** los modelos y umbrales se eligieron con la misma validación (optimismo pequeño); `test` sin tocar. Con 10 procesos en paralelo los tiempos salen ~3 veces mayores (competencia por CPU). Los falsos positivos de la ablación usan una regla de caras pequeñas aproximada, pero las versiones finales usan el evaluador oficial. No se probó con webcam.
