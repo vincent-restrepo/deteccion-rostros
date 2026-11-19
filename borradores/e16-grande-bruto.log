@@ -1,0 +1,5 @@
+segundos por fuente: {'dlib': 0.253, 'dlib_clahe': 0.26, 'dlib_espejo': 0.266, 'dlib_rot': 0.264, 'haar': 0.075, 'hogsvm': 0.047}
+entrenamiento desde datos/cache_fusion_grande.pkl 6834 imágenes
+dlib+haar+hogsvm {"0.2": {"wider": {"recall_principal": 0.75, "fp_por_imagen": 0.177}, "openimages": {"recall_principal": 0.728, "fp_por_imagen": 0.182}}, "0.1": {"wider": {"recall_principal": 0.766, "fp_por_imagen": 0.343}, "openimages": {"recall_principal": 0.746, "fp_por_imagen": 0.352}}}
+dlib+haar+hogsvm+extra {"0.2": {"wider": {"recall_principal": 0.756, "fp_por_imagen": 0.173}, "openimages": {"recall_principal": 0.74, "fp_por_imagen": 0.195}}, "0.1": {"wider": {"recall_principal": 0.774, "fp_por_imagen": 0.345}, "openimages": {"recall_principal": 0.755, "fp_por_imagen": 0.367}}}
+FIN

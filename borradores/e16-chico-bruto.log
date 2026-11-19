@@ -1,0 +1,3 @@
+segundos por fuente: {'dlib': 0.253, 'dlib_clahe': 0.26, 'dlib_espejo': 0.266, 'dlib_rot': 0.264, 'haar': 0.075, 'hogsvm': 0.047}
+dlib+haar+hogsvm {"0.2": {"wider": {"recall_principal": 0.749, "fp_por_imagen": 0.163}, "openimages": {"recall_principal": 0.726, "fp_por_imagen": 0.185}}, "0.1": {"wider": {"recall_principal": 0.762, "fp_por_imagen": 0.326}, "openimages": {"recall_principal": 0.746, "fp_por_imagen": 0.33}}}
+dlib+haar+hogsvm+extra {"0.2": {"wider": {"recall_principal": 0.756, "fp_por_imagen": 0.174}, "openimages": {"recall_principal": 0.743, "fp_por_imagen": 0.193}}, "0.1": {"wider": {"recall_principal": 0.774, "fp_por_imagen": 0.323}, "openimages": {"recall_principal": 0.755, "fp_por_imagen": 0.315}}}

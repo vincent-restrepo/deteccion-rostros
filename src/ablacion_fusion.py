@@ -16,11 +16,15 @@ def _cands(m):
     if g is None: return None
     return {"ruta": m["ruta"], "dataset": m["dataset"], "cajas": cajas, "cands": df.candidatas(g)}
 
+def _nuevas(d):
+    g, _, _ = hs.cargar_img({"ruta": d["ruta"], "cajas": []})
+    return df.candidatas(g, set(df.NUEVAS)) if g is not None else []
+
 def _grupos(args):
     d, usar = args; g, _, _ = hs.cargar_img({"ruta": d["ruta"], "cajas": []})
     if g is None: return None
     c = [x for x in d["cands"] if x[1] in usar]
-    return df.agrupar(c, g) if c else []
+    return df.agrupar(c, g, "extra" in usar, df.ORDEN) if c else []   # «extra» en la variante = rasgos nuevos (E16)
 
 def _tiempos(m):
     g, _, _ = hs.cargar_img(m); r = df._recursos(); t = {}
@@ -47,6 +51,7 @@ if __name__ == "__main__":
     elif modo == "medir":
         from sklearn.ensemble import HistGradientBoostingClassifier
         z = pickle.load(open(CACHE, "rb")); E, V = z["entrenamiento"], z["validacion"]; print("segundos por fuente:", z["tiempos"], flush=True)
+        if os.environ.get("CACHE_ENTRENAMIENTO"): E = pickle.load(open(os.environ["CACHE_ENTRENAMIENTO"], "rb"))["entrenamiento"]; print("entrenamiento desde", os.environ["CACHE_ENTRENAMIENTO"], len(E), "imágenes", flush=True)   # otro caché para entrenar (E16)
         todas = set(FUENTES); variantes = {"todas": todas}
         for q in FUENTES: variantes[f"sin {q}"] = todas - {q}
         variantes["sin rotaciones"] = todas - {"dlib_rot_mas", "dlib_rot_menos"}; variantes["solo dlib normal + hogsvm"] = {"dlib", "hogsvm"}; variantes["solo dlib normal"] = {"dlib"}
@@ -77,6 +82,16 @@ if __name__ == "__main__":
                         r[d["dataset"]][0] += int(cajas.index(pr) in usado); r[d["dataset"]][1] += fp; r[d["dataset"]][2] += 1
                     fila[str(umbral)] = {k: {"recall_principal": round(a / n, 3), "fp_por_imagen": round(f / n, 3)} for k, (a, f, n) in r.items()}
                 res[nombre] = fila; print(nombre, json.dumps(fila, ensure_ascii=False), flush=True)
+    elif modo == "agregar":   # ablacion_fusion.py agregar [caché de entrada.pkl ...]: calcula SOLO las fuentes nuevas (df.NUEVAS) y las suma a las candidatas guardadas
+        for ruta in (sys.argv[2:] or [CACHE]):
+            z = pickle.load(open(ruta, "rb")); t0 = time.time()
+            for clave in ("entrenamiento", "validacion"):
+                lista = z[clave]
+                if not lista: continue
+                with ProcessPoolExecutor() as ex: nuevas = list(ex.map(_nuevas, lista, chunksize=4))
+                for d, n in zip(lista, nuevas): d["cands"] = [c for c in d["cands"] if c[1] not in df.NUEVAS] + (n or [])
+                print(ruta, clave, len(lista), f"({time.time() - t0:.0f} s)", flush=True)
+            pickle.dump(z, open(ruta, "wb"))
     elif modo == "modelo":   # ablacion_fusion.py modelo fuente1+fuente2 modelos/salida.pkl : entrena con el caché y guarda el segundo paso con su lista de fuentes
         import joblib; from sklearn.ensemble import HistGradientBoostingClassifier
         usar = set(sys.argv[2].split("+")); E = pickle.load(open(CACHE, "rb"))["entrenamiento"]
@@ -85,5 +100,5 @@ if __name__ == "__main__":
         for d, gr in zip(E, ge):
             for caja, f in gr or []: X.append(f); y.append(int(max((hs.iou(caja, c) for c in d["cajas"]), default=0) >= 0.5))
         clf = HistGradientBoostingClassifier(max_iter=500, learning_rate=0.05, early_stopping=True, validation_fraction=0.15, n_iter_no_change=20, random_state=1).fit(np.array(X), np.array(y))
-        joblib.dump({"clf": clf, "fuentes": sorted(usar)}, sys.argv[3]); print(f"guardado {sys.argv[3]} con {sorted(usar)}; árboles {clf.n_iter_}; grupos {len(y)}")
+        joblib.dump({"clf": clf, "fuentes": sorted(usar - {"extra"}), "extra": "extra" in usar, "orden_fuentes": list(df.ORDEN)}, sys.argv[3]); print(f"guardado {sys.argv[3]} con {sorted(usar)}; árboles {clf.n_iter_}; grupos {len(y)}")
     else: sys.exit(__doc__)

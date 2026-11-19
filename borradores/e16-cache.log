@@ -1,0 +1,3 @@
+entrenamiento: 6834 (1055 s)
+validación: 0 (1055 s)
+segundos por fuente: {'dlib': 0.265, 'dlib_clahe': 0.291, 'dlib_espejo': 0.287, 'dlib_rot': 0.297, 'haar': 0.1, 'hogsvm': 0.056}

@@ -62,17 +62,17 @@ python src/generar_alteraciones.py train 3000 1 && python src/generar_alteracion
 
 ## 3b. Detector de la cara principal (modelos que hay que entrenar)
 
-Los modelos no vienen en el repo (`modelos/` está en `.gitignore`). Con los datasets ya descargados (sección 3) y las divisiones generadas, se entrenan en unos 10 minutos:
+Los modelos no vienen en el repo (`modelos/` está en `.gitignore`). Con los datasets ya descargados (sección 3) y las divisiones generadas, se entrenan en unos 15 minutos (las divisiones `datos/division_*.csv` ya vienen en el repo):
 
 ```bash
-python src/dividir_openimages.py || true   # solo si falta datos/division_openimages.csv (ver AGENTS.md)
 python src/hog_svm_cara.py entrenar 3000 1500 2 1                                   # HOG+SVM propio (2 min) → modelos/hogsvm_cara.npz
-python src/ablacion_fusion.py cache 1000 0                                          # candidatas de 2.000 imágenes de entrenamiento (≈ 5 min)
-python src/ablacion_fusion.py modelo dlib+haar+hogsvm modelos/fusion_rapido.pkl     # versión rápida (la de la app)
-python src/ablacion_fusion.py modelo dlib+dlib_espejo+hogsvm modelos/fusion_equilibrado.pkl   # versión equilibrada
+python src/ablacion_fusion.py cache 1000 0                                          # candidatas de 2.000 imágenes de entrenamiento con las 11 fuentes (≈ 10 min)
+python src/ablacion_fusion.py modelo dlib+haar+hogsvm+haar_perfil+extra modelos/fusion_rapido.pkl           # versión rápida (la de la app)
+python src/ablacion_fusion.py modelo dlib+dlib_espejo+haar+hogsvm+haar_perfil+extra modelos/fusion_equilibrado.pkl
+python src/ablacion_fusion.py modelo dlib+dlib_clahe+dlib_espejo+dlib_rot_mas+dlib_rot_menos+haar+hogsvm+haar_perfil+dlib_pad+dlib_rot_90+dlib_rot_270+extra modelos/fusion_completo.pkl
 ```
 
-Medir: `python src/evaluar_principal.py val 5000 1 fusionrapido_t0.2` (toda la validación; ver `borradores/experimentos.md`, E12–E15). **No uses `test`** hasta la evaluación final.
+Medir: `python src/evaluar_principal.py val 5000 1 fusionrapido_t0.2` (también `fusioneq_t0.2` y `fusioncompleto_t0.2`; toda la validación; ver `borradores/experimentos.md`, E12–E17). **No uses `test`** hasta la evaluación final.
 
 ## 4. Experimentos y evaluación
 
