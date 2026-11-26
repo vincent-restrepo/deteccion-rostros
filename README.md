@@ -43,6 +43,8 @@ python src/app_blur.py --puerto 8765                # puerto (por defecto 8765)
 
 Por defecto la app usa el **detector combinado** de la cara principal (E15) si existen los modelos en `modelos/`; si faltan, avisa y usa Haar. Opciones: `--detector haar` (el anterior), `--umbral 0.2` (menos falsos positivos; por defecto 0,1, modo privacidad) y `--modelo modelos/fusion_equilibrado.pkl`.
 
+**Reconocer transformación (parte B en la app):** tras «Guardar captura» aparece el botón «Siguiente: reconocer transformación →». Abre una segunda pantalla con la foto capturada; «Reconocer transformación» la analiza y dibuja un contorno rojo, con rótulo, donde detecta difusión (desenfoque), ruido, pixelado, tapado o colores reducidos. El reconocedor recibe **solo los píxeles de la foto** (no el modo, ni los parámetros, ni las cajas de la edición): `src/reconocer_transformacion.py`. Necesita `modelos/revisor_v2.pkl` (ver `borradores/guia-reproducir.md`); sin él, la app avisa. Sus límites están en E24.
+
 Abre <http://localhost:8765>. A la derecha eliges el filtro en un menú (desenfoque, pixelado, tapado sólido, ruido, reducción de colores) y mueves su slider. «Guardar captura» deja la imagen en `salidas_demo/` (esa carpeta **no** se sube a git). En macOS, la primera vez el sistema te pide permiso para usar la cámara.
 
 ## 3. Datos (no vienen en el repo)
@@ -112,6 +114,7 @@ src/dividir_wider.py         división sin fuga de WIDER (dHash)
 src/dividir_openimages.py    división sin fuga del segundo dataset (Open Images)
 src/conjunto_principal.py    carga la «cara principal» de ambos datasets con cajas unificadas
 src/generar_alteraciones.py  imágenes con caras alteradas y su verdad exacta
+src/reconocer_transformacion.py  «Reconocer transformación»: contornos rojos por tipo sobre una foto (usa el revisor combinado)
 src/evaluar_caras.py         evaluación de detectores
 brief.md, bitacora.md        objetivo, reglas y registro de cada paso
 borradores/                  decisiones, experimentos, procesamiento de datos

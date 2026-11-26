@@ -11,6 +11,7 @@ cv2.setNumThreads(3)   # HILOS
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from detector_caras import Detector, _nms
 from ediciones import editar
+import reconocer_transformacion as RT
 
 # --- parámetros (privacidad: falso negativo peor que falso positivo, D2) ---
 VENTANA, MIN_VOTOS = 4, 1   # en DETECCIONES (≈2,5 por segundo): se esconde desde la primera vez que se ve (falso negativo peor, D2)
@@ -30,6 +31,7 @@ LOCK = threading.Lock()
 ULTIMO_JPG = None
 ULTIMO_FRAME = None
 ULTIMO_CRUDO = None; N_CRUDO = 0; CAJAS = []; VCAJAS = 0
+ULTIMA_CAPTURA = None; RECONOCIDA = None   # ruta de la última captura y su versión con contornos rojos (jpg en memoria)
 
 
 class Pista:
@@ -214,8 +216,17 @@ button:hover{border-color:var(--acc)}#err{color:#c0392b;margin-top:8px}
 <h2>Detectado ahora</h2>
 <div><span class="num" id="n">0</span> <span>caras</span> · <small id="fps"></small></div>
 <button id="cap">Guardar captura</button><small id="msg"></small>
+<button id="sig" style="display:none;background:var(--acc);color:#fff;border-color:var(--acc);font-weight:600">Siguiente: reconocer transformación →</button>
 <div id="err"></div>
 </aside></main>
+<section id="p2" style="display:none;max-width:1280px;margin:0 auto;padding:16px">
+<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+<button id="atras" style="width:auto;margin:0;padding:10px 16px">← Volver a la cámara</button>
+<button id="rec" style="width:auto;margin:0;padding:10px 18px;background:#d93030;color:#fff;border-color:#d93030;font-weight:600">Reconocer transformación</button>
+<span id="estado2" style="color:var(--mut)"></span></div>
+<div class="video" style="aspect-ratio:auto;min-height:240px"><img id="foto" alt="Foto capturada" style="width:100%;height:auto;max-height:78vh;object-fit:contain"></div>
+<ul id="lista" style="margin:12px 0 0;padding-left:20px"></ul>
+</section>
 <script>
 const $=id=>document.getElementById(id);
 async function envia(){await fetch('/estado',{method:'POST',body:JSON.stringify({esconder:$('esconder').checked,
@@ -223,7 +234,15 @@ modo:$('modo').value,bloque:+$('bloque').value,fuerza:+$('fuerza').value,color:$
 function vista(){const on=$('esconder').checked;$('txtesc').textContent=on?'Sí, esconder':'No, mostrar todo';
 $('como').classList.toggle('apagado',!on);$('modo').disabled=!on;const m=$('modo').value;$('tam').classList.toggle('apagado',m!=='pixelado');$('fz').classList.toggle('apagado',m!=='desenfoque');$('tp').classList.toggle('apagado',m!=='tapado');$('rz').classList.toggle('apagado',m!=='ruido');$('cl').classList.toggle('apagado',m!=='colores');$('nv').textContent=$('niveles').value;$('nc').textContent=11-(+$('niveles').value);$('rv').textContent=$('ruido').value;$('bv').textContent=$('bv2').textContent=$('bloque').value;$('fv').textContent=(+$('fuerza').value).toFixed(1)}
 ['esconder'].forEach(i=>$(i).onchange=()=>{vista();envia()});vista();envia();['modo','color'].forEach(i=>$(i).onchange=()=>{vista();envia()});['bloque','fuerza','ruido','niveles'].forEach(i=>$(i).oninput=()=>{vista();envia()});
-$('cap').onclick=async()=>{const r=await (await fetch('/captura',{method:'POST'})).json();$('msg').textContent=' '+(r.ruta||r.error)}
+$('cap').onclick=async()=>{const r=await (await fetch('/captura',{method:'POST'})).json();$('msg').textContent=' '+(r.ruta||r.error);$('sig').style.display=r.ruta?'block':'none'}
+$('sig').onclick=()=>{document.querySelector('main').style.display='none';$('p2').style.display='block';$('foto').src='/captura.jpg?'+Date.now();$('lista').innerHTML='';$('estado2').textContent='Esta es la foto que tomaste. Pulsa «Reconocer transformación».'}
+$('atras').onclick=()=>{$('p2').style.display='none';document.querySelector('main').style.display='grid'}
+$('rec').onclick=async()=>{$('rec').disabled=true;$('estado2').textContent='Analizando la foto…';$('lista').innerHTML='';
+try{const r=await (await fetch('/reconocer',{method:'POST'})).json();
+if(r.error){$('estado2').textContent=r.error}else{$('foto').src='/reconocida.jpg?'+Date.now();
+$('estado2').textContent=r.n?('Se encontraron '+r.n+' zonas transformadas ('+r.segundos+' s). En rojo, dónde y de qué tipo.'):('No se encontró ninguna transformación ('+r.segundos+' s).');
+r.regiones.forEach(g=>{const li=document.createElement('li');li.textContent=g.nombre+' · caja '+g.caja.join(', ');$('lista').appendChild(li)})}}
+catch(e){$('estado2').textContent='Error: '+e}$('rec').disabled=false}
 setInterval(async()=>{try{const e=await (await fetch('/estado')).json();$('n').textContent=e.n_caras;$('fps').textContent=e.fps+' cuadros/s · detección '+e.det_ms+' ms';$('err').textContent=e.error}catch(_){}},500);
 </script></body></html>"""
 
@@ -250,9 +269,16 @@ class H(BaseHTTPRequestHandler):
                         self.wfile.write(b"--cuadro\r\nContent-Type: image/jpeg\r\nContent-Length: " + str(len(j)).encode() + b"\r\n\r\n" + j + b"\r\n")
                     time.sleep(0.04)
             except (BrokenPipeError, ConnectionResetError): pass
+        elif self.path.startswith("/captura.jpg") or self.path.startswith("/reconocida.jpg"):
+            with LOCK: ruta = ULTIMA_CAPTURA; rec = RECONOCIDA
+            if self.path.startswith("/captura.jpg"): j = open(ruta, "rb").read() if ruta and os.path.exists(ruta) else None
+            else: j = rec
+            if j is None: return self.send_error(404)
+            self.send_response(200); self.send_header("Content-Type", "image/jpeg"); self.send_header("Content-Length", str(len(j))); self.send_header("Cache-Control", "no-store"); self.end_headers(); self.wfile.write(j)
         else: self.send_error(404)
 
     def do_POST(self):
+        global ULTIMA_CAPTURA, RECONOCIDA
         n = int(self.headers.get("Content-Length") or 0); cuerpo = self.rfile.read(n) if n else b""
         if self.path == "/estado":
             d = json.loads(cuerpo or b"{}")
@@ -270,7 +296,16 @@ class H(BaseHTTPRequestHandler):
             with LOCK: f = None if ULTIMO_FRAME is None else ULTIMO_FRAME.copy()
             if f is None: return self._json({"error": "Todavía no hay imagen"})
             os.makedirs("salidas_demo", exist_ok=True); ruta = time.strftime("salidas_demo/captura-%Y%m%d-%H%M%S.jpg")
-            cv2.imwrite(ruta, f); self._json({"ruta": ruta})
+            cv2.imwrite(ruta, f)
+            with LOCK: ULTIMA_CAPTURA = ruta; RECONOCIDA = None
+            self._json({"ruta": ruta})
+        elif self.path == "/reconocer":
+            with LOCK: ruta = ULTIMA_CAPTURA
+            if not ruta or not os.path.exists(ruta): return self._json({"error": "Primero toma una captura."})
+            if not RT.disponible(): return self._json({"error": "Falta el modelo del revisor (modelos/revisor_v2.pkl). Cómo entrenarlo: borradores/guia-reproducir.md."})
+            t0 = time.time(); out, rs = RT.reconocer(cv2.imread(ruta)); ok, jpg = cv2.imencode(".jpg", out, [cv2.IMWRITE_JPEG_QUALITY, 90])
+            with LOCK: RECONOCIDA = jpg.tobytes()
+            self._json({"n": len(rs), "segundos": round(time.time() - t0, 1), "regiones": [{"tipo": r["tipo"], "nombre": r["nombre"], "caja": [int(v) for v in r["region"]]} for r in rs]})
         else: self.send_error(404)
 
 
