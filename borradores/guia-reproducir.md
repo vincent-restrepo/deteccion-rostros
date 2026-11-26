@@ -62,6 +62,10 @@ Para cargar los datos en tu código: cara principal → `from conjunto_principal
 REVISOR_V2=1 .venv/bin/python src/revisor.py entrenar 1500          # revisor entrenado v2 → modelos/revisor_v2.pkl (≈ 3 min)
 REVISOR_V2=1 .venv/bin/python src/revisor_combinado.py val 300 150 0.95
 
+# Reconocer transformación en la app (necesita modelos/revisor_v2.pkl, ver arriba): captura → «Siguiente» → «Reconocer transformación»
+.venv/bin/python src/app_blur.py
+.venv/bin/python src/reconocer_transformacion.py foto.jpg salida.jpg     # por línea de comandos
+
 # Landmarks (M1)
 .venv/bin/python src/keypoints_datos.py piso                          # el piso: la forma media
 ```
